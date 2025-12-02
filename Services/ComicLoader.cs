@@ -138,6 +138,11 @@ namespace ComicViewer.Services
             // 使用MemoryStream避免临时文件
             await Task.Run(() =>
             {
+                if(Path.GetExtension(destinationPath) == ".zip")
+                {
+                    File.Copy(sourceFilePath, destinationPath, true);
+                    return;
+                }
                 using var zip = ZipFile.Open(destinationPath, ZipArchiveMode.Create);
 
                 // 1. 添加漫画文件

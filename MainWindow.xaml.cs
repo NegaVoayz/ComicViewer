@@ -195,7 +195,7 @@ namespace ComicViewer
             var saveDialog = new SaveFileDialog
             {
                 FileName = $"{comic.Title}.cmc",
-                Filter = "漫画分享包|*.cmc"
+                Filter = "漫画分享包|*.cmc|漫画原文件|*.zip"
             };
 
             if (saveDialog.ShowDialog() == true)
