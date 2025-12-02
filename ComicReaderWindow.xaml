@@ -4,7 +4,7 @@
         Title="漫画阅读器" 
         WindowState="Maximized"
         WindowStyle="None"
-        AllowsTransparency="True"
+        AllowsTransparency="False"
         Background="Black"
         KeyDown="Window_KeyDown"
         MouseWheel="Window_MouseWheel">

@@ -177,33 +177,34 @@ namespace ComicViewer
 
         private async Task LoadTwoPagesAsync()
         {
-            // 加载左页
+            // 创建两个加载任务，但不立即 await
+            Task<BitmapImage> leftTask = null;
+            Task<BitmapImage> rightTask = null;
+
+            // 启动左页加载
             if (_currentPageIndex < _imageEntries.Count)
             {
-                var leftImage = await LoadImageFromArchiveAsync(_imageEntries[_currentPageIndex]);
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    LeftPageImage.Source = leftImage;
-                });
+                leftTask = LoadImageFromArchiveAsync(_imageEntries[_currentPageIndex]);
             }
 
-            // 加载右页（如果有）
+            // 启动右页加载
             if (_currentPageIndex + 1 < _imageEntries.Count)
             {
-                var rightImage = await LoadImageFromArchiveAsync(_imageEntries[_currentPageIndex + 1]);
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    RightPageImage.Source = rightImage;
-                });
+                rightTask = LoadImageFromArchiveAsync(_imageEntries[_currentPageIndex + 1]);
             }
-            else
+
+            // 等待两个任务都完成
+            await Task.WhenAll(
+                leftTask ?? Task.FromResult<BitmapImage>(null),
+                rightTask ?? Task.FromResult<BitmapImage>(null)
+            );
+
+            // 一次性更新UI
+            await Dispatcher.InvokeAsync(() =>
             {
-                // 没有右页时清空
-                await Dispatcher.InvokeAsync(() =>
-                {
-                    RightPageImage.Source = null;
-                });
-            }
+                LeftPageImage.Source = leftTask?.Result;
+                RightPageImage.Source = rightTask?.Result;
+            });
         }
 
         private async Task<BitmapImage> LoadImageFromArchiveAsync(string entryName)
@@ -505,6 +506,7 @@ namespace ComicViewer
         private void FullScreenToggle_Unchecked(object sender, RoutedEventArgs e)
         {
             WindowState = WindowState.Normal;
+            WindowStyle = WindowStyle.SingleBorderWindow;
         }
 
         // ========== 辅助方法 ==========
