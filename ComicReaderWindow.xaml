@@ -154,6 +154,7 @@
                                   Style="{StaticResource NoBorderToggleButtonStyle}"
                                   Width="60" Height="30"
                                   Margin="10,0"
+                                  IsChecked="True"
                                   Checked="FullScreenToggle_Checked"
                                   Unchecked="FullScreenToggle_Unchecked"/>
                 </StackPanel>
