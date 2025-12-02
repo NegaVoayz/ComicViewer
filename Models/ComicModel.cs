@@ -7,6 +7,7 @@ using ComicViewer.Services;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Windows.Media;
 
 namespace ComicViewer.Models
 {
@@ -30,7 +31,7 @@ namespace ComicViewer.Models
         public DateTime? LastAccess { get; set; }
 
         [Column("Progress", TypeName = "INTEGER")]
-        [Comment("阅读进度 0-100")]
+        [Comment("阅读进度")]
         public int Progress { get; set; }
 
         [Column("Rating", TypeName = "INTEGER")]
@@ -78,6 +79,8 @@ namespace ComicViewer.Models
         private string _title;
         private string[] _tags;
         private int _progress;
+        private int _length = 0;
+        private ObservableTask<int> _lengthTask;
         private BitmapImage _coverImage;
         private ObservableTask<BitmapImage> _coverTask;
         public int Rating;
@@ -99,7 +102,29 @@ namespace ComicViewer.Models
         public int Progress
         {
             get => _progress;
-            set => SetField(ref _progress, value);
+            set
+            {
+                _progress = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public int Length
+        {
+            get
+            {
+                // 当访问Length时，如果为空则触发懒加载
+                if (_length == 0 && _lengthTask == null)
+                {
+                    _length = CountLengthFromArchive();
+                }
+                return _length;
+            }
+            private set
+            {
+                _length = value;
+                OnPropertyChanged();
+            }
         }
 
         public BitmapImage CoverImage
@@ -145,7 +170,7 @@ namespace ComicViewer.Models
 
         public event PropertyChangedEventHandler PropertyChanged;
 
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
@@ -164,11 +189,19 @@ namespace ComicViewer.Models
             return Task.Run(async () =>
             {
                 if (_coverImage != null)
-                    return _coverImage!;
+                    return _coverImage;
 
                 await LoadCoverFromArchiveAsync();
                 return _coverImage!;
             });
+        }
+        private int CountLengthFromArchive()
+        {
+            string filename = $"{Key}.zip";
+            string filePath = Path.Combine(Configs.GetFilePath(), filename);
+            using var archive = SharpCompress.Archives.ArchiveFactory.Open(filePath);
+            // set length
+            return archive.Entries.Count();
         }
 
         private async Task<BitmapImage> LoadCoverFromArchiveAsync()
@@ -178,9 +211,11 @@ namespace ComicViewer.Models
                 string filename = $"{Key}.zip";
                 string filePath = Path.Combine(Configs.GetFilePath(), filename);
                 using var archive = SharpCompress.Archives.ArchiveFactory.Open(filePath);
+                // set length
+                _length = archive.Entries.Count();
                 var imageEntry = archive.Entries
                     .FirstOrDefault(e => e.Key != null && Path.GetFileName(e.Key)!.Equals("cover.jpg"))
-                    ?? archive.Entries
+                    ?? archive.Entries.OrderBy(e => e.Key)
                         .FirstOrDefault();
 
                 if (imageEntry == null)
@@ -207,6 +242,7 @@ namespace ComicViewer.Models
                     bitmap.CreateOptions = BitmapCreateOptions.None;
                     bitmap.EndInit();
                     bitmap.Freeze(); // 允许跨线程访问
+
                     return bitmap;
                 });
             });
@@ -220,7 +256,7 @@ namespace ComicViewer.Models
             bitmap.BeginInit();
             bitmap.UriSource = uri;
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.DecodePixelWidth = 280;
+            //bitmap.DecodePixelWidth = 280;
             bitmap.CreateOptions = BitmapCreateOptions.None;
             bitmap.EndInit();
             bitmap.Freeze();

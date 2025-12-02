@@ -125,12 +125,57 @@ namespace ComicViewer
             }
         }
 
-        private void OpenComic(ComicModel comic)
+        private async Task OpenComic(ComicModel comic)
         {
-            // 1. 如果是压缩包，在软件内打开阅读器
-            // 2. 如果是文件夹，打开图片浏览器
-            // 3. 记录阅读进度
-            MessageBox.Show($"打开漫画: {comic.Title}");
+            try
+            {
+                UpdateStatus($"正在打开: {comic.Title}");
+
+                // 创建并显示阅读器窗口
+                var readerWindow = new ComicReaderWindow(comic)
+                {
+                    Owner = this,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+
+                // 显示窗口（模态对话框）
+                readerWindow.ShowDialog();
+
+                // 更新阅读进度
+                if (readerWindow.LastReadPage > 0)
+                {
+                    // 进度已经在阅读器关闭时更新了
+                    UpdateStatus($"已阅读到第 {readerWindow.LastReadPage} 页");
+
+                    // 保存到元数据文件
+                    await SaveComicProgressAsync(comic);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开漫画失败:\n{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                UpdateStatus($"打开失败: {comic.Title}");
+            }
+        }
+
+        private async Task SaveComicProgressAsync(ComicModel comic)
+        {
+            try
+            {
+                // 更新到数据库或元数据文件
+                var comicData = ComicService.Instance.GetComicData(comic.Key);
+                if (comicData != null)
+                {
+                    comicData.Progress = comic.Progress;
+                    comicData.LastAccess = comic.LastAccess;
+                    await ComicService.Instance.UpdateComicAsync(comicData);
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"保存阅读进度失败: {ex.Message}");
+            }
         }
 
         private void EditComicTags(ComicModel comic)

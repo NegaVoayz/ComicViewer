@@ -15,6 +15,12 @@ namespace ComicViewer.Database
         private static readonly Lazy<ComicService> _instance = new(() => new ComicService());
 
         public static ComicService Instance => _instance.Value;
+
+        public async Task UpdateComicAsync(ComicData comic)
+        {
+            _context.Comics.Update(comic);
+            await _context.SaveChangesAsync();
+        }
         public ComicData? GetComicData(string comicKey)
         {
             return _context.Comics.FirstOrDefault(e => e.Key == comicKey);

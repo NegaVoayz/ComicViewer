@@ -222,9 +222,11 @@
                                 <!-- 卡片内容 -->
                                 <Grid>
                                     <!-- 封面绑定 -->
-                                    <Image Width="280"
-                               Stretch="None"
-                               Source="{Binding CoverImage}"/>
+
+                                    <Viewbox MaxWidth="280" MaxHeight="350" Stretch="Uniform">
+                                        <Image Stretch="None"
+                                               Source="{Binding CoverImage}"/>
+                                    </Viewbox>
 
                                     <!-- 标题和标签区域 -->
                                     <Border Background="#80000000" 

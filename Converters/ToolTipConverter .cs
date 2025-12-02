@@ -47,33 +47,46 @@ namespace ComicViewer.Converters
                 Orientation = Orientation.Vertical
             };
 
-            // 标题
+            // 标题 - 使用绑定
             var titleBlock = new TextBlock
             {
-                Text = comic.Title,
                 FontWeight = FontWeights.Bold,
                 FontSize = 14,
                 Margin = new Thickness(0, 0, 0, 4),
                 TextWrapping = TextWrapping.Wrap
             };
+            titleBlock.SetBinding(TextBlock.TextProperty,
+                new Binding("Title") { Source = comic });
 
-            // 标签
+            // 标签 - 使用绑定和多值转换器
             var tagsBlock = new TextBlock
             {
-                Text = "标签: " + (comic.Tags != null && comic.Tags.Length > 0
-                    ? string.Join(", ", comic.Tags)
-                    : "无"),
                 FontSize = 12,
                 Margin = new Thickness(0, 0, 0, 4)
             };
 
-            // 阅读进度
+            // 创建一个多值绑定来格式化标签
+            var tagsBinding = new MultiBinding
+            {
+                Converter = new TagsFormatConverter()
+            };
+            tagsBinding.Bindings.Add(new Binding("Tags") { Source = comic });
+            tagsBlock.SetBinding(TextBlock.TextProperty, tagsBinding);
+
+            // 阅读进度 - 使用绑定和多值转换器
             var progressBlock = new TextBlock
             {
-                Text = $"阅读进度: {(int)(comic.Progress * 100)}%",
                 FontSize = 12,
                 Margin = new Thickness(0, 0, 0, 6)
             };
+
+            var progressBinding = new MultiBinding
+            {
+                Converter = new ProgressFormatConverter()
+            };
+            progressBinding.Bindings.Add(new Binding("Progress") { Source = comic });
+            progressBinding.Bindings.Add(new Binding("Length") { Source = comic });
+            progressBlock.SetBinding(TextBlock.TextProperty, progressBinding);
 
             // 分隔线
             var separator = new Separator
@@ -81,7 +94,7 @@ namespace ComicViewer.Converters
                 Margin = new Thickness(0, 4, 0, 4)
             };
 
-            // 快速操作提示
+            // 固定提示文本
             var hintBlock = new TextBlock
             {
                 Text = "左键: 打开漫画 | 右键: 更多操作",
@@ -98,6 +111,45 @@ namespace ComicViewer.Converters
 
             toolTip.Content = stackPanel;
             return toolTip;
+        }
+
+        // 标签格式化转换器
+        private class TagsFormatConverter : IMultiValueConverter
+        {
+            public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+            {
+                if (values[0] is string[] tags)
+                {
+                    return "标签: " + (tags != null && tags.Length > 0
+                        ? string.Join(", ", tags)
+                        : "无");
+                }
+                return "标签: 无";
+            }
+
+            public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        // 进度格式化转换器
+        private class ProgressFormatConverter : IMultiValueConverter
+        {
+            public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+            {
+                if (values[0] is int progress && values[1] is int length && length > 0)
+                {
+                    var percentage = (int)((double)progress / length * 100.0);
+                    return $"阅读进度: {percentage}%";
+                }
+                return "阅读进度: 0%";
+            }
+
+            public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+            {
+                throw new NotImplementedException();
+            }
         }
     }
 }
