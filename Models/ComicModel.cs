@@ -6,6 +6,7 @@ using System.IO;
 using ComicViewer.Services;
 using System.Windows;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ComicViewer.Models
 {
@@ -15,26 +16,60 @@ namespace ComicViewer.Models
         [StringLength(32)] // Text(32) 对应 MD5 长度
         [Comment("MD5主键")]
         public string Key { get; set; }
-        public string Title;
-        public DateTime? CreatedTime;
-        public DateTime? LastAccess;
-        public int Progress;
-        public int Rating;
-        public string TagsPreview;
+
+        [Column("Title", TypeName = "TEXT")]
+        [Comment("漫画标题")]
+        public string Title { get; set; }
+
+        [Column("CreatedTime", TypeName = "DATETIME")]
+        [Comment("创建时间")]
+        public DateTime? CreatedTime { get; set; }
+
+        [Column("LastAccess", TypeName = "DATETIME")]
+        [Comment("最后访问时间")]
+        public DateTime? LastAccess { get; set; }
+
+        [Column("Progress", TypeName = "INTEGER")]
+        [Comment("阅读进度 0-100")]
+        public int Progress { get; set; }
+
+        [Column("Rating", TypeName = "INTEGER")]
+        [Comment("评分 0-5")]
+        public int Rating { get; set; }
+
+        [Comment("漫画标签关联")]
         public virtual ICollection<ComicTag> ComicTags { get; set; }
 
         public ComicModel GetComicModel()
         {
-            var ret = new ComicModel();
-            ret.Title = Title;
-            ret.Progress = Progress;
-            ret.Key = Key;
-            ret.LastAccess = LastAccess;
-            ret.CreatedTime = CreatedTime;
-            ret.Tags = null;
-            ret.Rating = Rating;
+            return new ComicModel
+            {
+                Title = Title,
+                Progress = Progress,
+                Key = Key,
+                LastAccess = LastAccess,
+                CreatedTime = CreatedTime,
+                Rating = Rating,
+                Tags = ComicTags?.Select(ct => ct.Tag.Name).ToArray() ?? Array.Empty<string>()
+            };
+        }
 
-            return ret;
+        public ComicMetadata ToComicMetadata()
+        {
+            return new ComicMetadata
+            {
+                Version = "1.0",
+                Title = Title,
+                // 从 ComicTags 提取标签名称
+                Tags = ComicTags?.Select(ct => ct.Tag.Name).ToArray() ?? Array.Empty<string>(),
+                System = new SystemInfo
+                {
+                    CreatedTime = CreatedTime,
+                    LastAccess = LastAccess,
+                    ReadProgress = Progress,
+                    Rating = Rating
+                }
+            };
         }
     }
     public class ComicModel : INotifyPropertyChanged
@@ -90,10 +125,10 @@ namespace ComicViewer.Models
         {
             get
             {
-                if (Tags == null || Tags.Length == 0)
+                if (_tags == null || _tags.Length == 0)
                     return "TagMe";
 
-                return string.Join(" ", Tags.Take(3));
+                return String.Join(", ",_tags.Take(3));
             }
         }
         private void OnCoverTaskPropertyChanged(object sender, PropertyChangedEventArgs e)

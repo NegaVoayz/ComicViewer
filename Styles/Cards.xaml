@@ -8,8 +8,8 @@
     
     <!-- 紧凑卡片样式 -->
     <Style x:Key="CompactComicCard" TargetType="Border">
-        <Setter Property="Width" Value="300"/>
-        <Setter Property="Height" Value="350"/>
+        <Setter Property="Width" Value="280"/>
+        <Setter Property="Height" Value="320"/>
         <Setter Property="Margin" Value="5,8"/>
         <Setter Property="CornerRadius" Value="4"/>
         <Setter Property="BorderThickness" Value="0.5"/>

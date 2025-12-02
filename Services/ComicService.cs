@@ -15,17 +15,27 @@ namespace ComicViewer.Database
         private static readonly Lazy<ComicService> _instance = new(() => new ComicService());
 
         public static ComicService Instance => _instance.Value;
+        public ComicData? GetComicData(string comicKey)
+        {
+            return _context.Comics.FirstOrDefault(e => e.Key == comicKey);
+        }
         public bool FindComic(string comicKey)
         {
             return _context.Comics.Any(e => e.Key == comicKey);
         }
         public async Task AddComicAsync(ComicData comic)
         {
-            await _context.Comics.AddAsync(comic);
+            _context.Comics.Add(comic);
+            await _context.SaveChangesAsync();
         }
         public async Task RemoveComicAsync(string comicKey)
         {
-            await _context.Comics.Where(e => e.Key == comicKey).ExecuteDeleteAsync();
+            var comic = await _context.Comics.FindAsync(comicKey);
+            if (comic == null) return;
+
+            _context.Comics.Remove(comic);
+            await _context.SaveChangesAsync();
+            _context.Entry(comic).State = EntityState.Detached;
         }
         public async Task<List<ComicModel>> GetAllComicsAsync()
         {

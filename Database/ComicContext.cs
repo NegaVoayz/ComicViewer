@@ -2,6 +2,7 @@
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,17 +19,87 @@ namespace ComicViewer.Database
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            optionsBuilder.UseSqlite("Data Source=comics.db");
+            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "comics.db");
+
+            // 确保目录存在
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+
+            optionsBuilder.UseSqlite($"Data Source={dbPath}");
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             // 配置 ComicData 主键
-            modelBuilder.Entity<ComicData>()
-                .HasKey(c => c.Key);
+            modelBuilder.Entity<ComicData>(entity =>
+            {
+                entity.ToTable("Comics");
+
+                entity.HasKey(e => e.Key);
+
+                entity.Property(e => e.Key)
+                      .HasColumnName("Key")
+                      .HasColumnType("VARCHAR(32)")
+                      .HasMaxLength(32)
+                      .IsRequired();
+
+                entity.Property(e => e.Title)
+                      .HasColumnName("Title")
+                      .HasColumnType("TEXT")
+                      .IsRequired(false);
+
+                entity.Property(e => e.CreatedTime)
+                      .HasColumnName("CreatedTime")
+                      .HasColumnType("DATETIME");
+
+                entity.Property(e => e.LastAccess)
+                      .HasColumnName("LastAccess")
+                      .HasColumnType("DATETIME");
+
+                entity.Property(e => e.Progress)
+                      .HasColumnName("Progress")
+                      .HasColumnType("INTEGER")
+                      .HasDefaultValue(0);
+
+                entity.Property(e => e.Rating)
+                      .HasColumnName("Rating")
+                      .HasColumnType("INTEGER")
+                      .HasDefaultValue(0);
+
+                // 导航属性配置
+                entity.HasMany(e => e.ComicTags)
+                      .WithOne(ct => ct.Comic)
+                      .HasForeignKey(ct => ct.ComicKey)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // 配置 TagModel 主键
-            modelBuilder.Entity<TagModel>()
-                .HasKey(t => t.Key);
+            modelBuilder.Entity<TagModel>(entity =>
+            {
+                entity.ToTable("Tags");
+
+                entity.HasKey(e => e.Key);
+
+                entity.Property(e => e.Key)
+                      .HasColumnName("Key")
+                      .HasColumnType("VARCHAR(32)")
+                      .HasMaxLength(32)
+                      .IsRequired();
+
+                entity.Property(e => e.Name)
+                      .HasColumnName("Name")
+                      .HasColumnType("TEXT")
+                      .IsRequired(false);
+
+                entity.Property(e => e.Count)
+                      .HasColumnName("Count")
+                      .HasColumnType("INTEGER")
+                      .HasDefaultValue(0);
+
+                // 导航属性配置
+                entity.HasMany(e => e.ComicTags)
+                      .WithOne(ct => ct.Tag)
+                      .HasForeignKey(ct => ct.TagKey)
+                      .OnDelete(DeleteBehavior.Cascade);
+            });
 
             // 配置 ComicTag 复合主键
             modelBuilder.Entity<ComicTag>()

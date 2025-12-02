@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore.Migrations;
+﻿using System;
+using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
@@ -14,7 +15,12 @@ namespace ComicViewer.Migrations
                 name: "Comics",
                 columns: table => new
                 {
-                    Key = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false, comment: "MD5主键")
+                    Key = table.Column<string>(type: "VARCHAR(32)", maxLength: 32, nullable: false, comment: "MD5主键"),
+                    Title = table.Column<string>(type: "TEXT", nullable: true, comment: "漫画标题"),
+                    CreatedTime = table.Column<DateTime>(type: "DATETIME", nullable: true, comment: "创建时间"),
+                    LastAccess = table.Column<DateTime>(type: "DATETIME", nullable: true, comment: "最后访问时间"),
+                    Progress = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0, comment: "阅读进度 0-100"),
+                    Rating = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0, comment: "评分 0-5")
                 },
                 constraints: table =>
                 {
@@ -25,9 +31,9 @@ namespace ComicViewer.Migrations
                 name: "Tags",
                 columns: table => new
                 {
-                    Key = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false, comment: "MD5主键"),
-                    Name = table.Column<string>(type: "TEXT", nullable: false),
-                    Count = table.Column<int>(type: "INTEGER", nullable: false)
+                    Key = table.Column<string>(type: "VARCHAR(32)", maxLength: 32, nullable: false, comment: "MD5主键"),
+                    Name = table.Column<string>(type: "TEXT", nullable: true),
+                    Count = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0)
                 },
                 constraints: table =>
                 {

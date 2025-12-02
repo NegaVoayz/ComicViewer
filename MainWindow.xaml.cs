@@ -125,87 +125,6 @@ namespace ComicViewer
             }
         }
 
-        private ContextMenu CreateComicContextMenu(ComicModel comic)
-        {
-            var contextMenu = new ContextMenu
-            {
-                Background = Brushes.White,
-                BorderBrush = Brushes.LightGray,
-                BorderThickness = new Thickness(1),
-                FontSize = 13
-            };
-
-            // 1. 打开漫画
-            var openItem = new MenuItem
-            {
-                Header = "📖 打开漫画",
-                Icon = new TextBlock { Text = "▶", FontSize = 14, Margin = new Thickness(0, 0, 6, 0) },
-                Command = new RelayCommand(() => OpenComic(comic)),
-                Tag = comic
-            };
-
-            // 2. 编辑标签
-            var editTagsItem = new MenuItem
-            {
-                Header = "🏷️ 编辑标签",
-                Icon = new TextBlock { Text = "🏷", FontSize = 14, Margin = new Thickness(0, 0, 6, 0) },
-                Command = new RelayCommand(() => EditComicTags(comic)),
-                Tag = comic
-            };
-
-            // 3. 分享漫画（生成.cmc文件）
-            var shareItem = new MenuItem
-            {
-                Header = "📤 分享漫画",
-                Icon = new TextBlock { Text = "📤", FontSize = 14, Margin = new Thickness(0, 0, 6, 0) },
-                Command = new RelayCommand(async () => await ShareComic(comic)),
-                Tag = comic
-            };
-
-            // 分隔线
-            var separator1 = new Separator();
-
-            // 4. 文件操作
-            var revealInExplorerItem = new MenuItem
-            {
-                Header = "📁 在资源管理器中显示",
-                Command = new RelayCommand(() => RevealInExplorer(comic.Key)),
-                Tag = comic
-            };
-
-            // 分隔线
-            var separator2 = new Separator();
-
-            // 5. 删除/移除
-            var removeItem = new MenuItem
-            {
-                Header = "🗑️ 从库中移除",
-                Foreground = Brushes.Red,
-                Command = new RelayCommand(() => RemoveComic(comic)),
-                Tag = comic
-            };
-
-            var deleteItem = new MenuItem
-            {
-                Header = "⚠️ 删除文件",
-                Foreground = Brushes.DarkRed,
-                Command = new RelayCommand(() => DeleteComicFile(comic)),
-                Tag = comic
-            };
-
-            // 添加到菜单
-            contextMenu.Items.Add(openItem);
-            contextMenu.Items.Add(editTagsItem);
-            contextMenu.Items.Add(shareItem);
-            contextMenu.Items.Add(separator1);
-            contextMenu.Items.Add(revealInExplorerItem);
-            contextMenu.Items.Add(separator2);
-            contextMenu.Items.Add(removeItem);
-            contextMenu.Items.Add(deleteItem);
-
-            return contextMenu;
-        }
-
         private void OpenComic(ComicModel comic)
         {
             // 1. 如果是压缩包，在软件内打开阅读器
@@ -236,7 +155,7 @@ namespace ComicViewer
 
             if (saveDialog.ShowDialog() == true)
             {
-                //Todo await CreateSharePackage(comic, saveDialog.FileName);
+                await _loader.CreateSharePackageAsync(comic, saveDialog.FileName);
             }
         }
          
@@ -426,6 +345,46 @@ namespace ComicViewer
             var ext = Path.GetExtension(filePath).ToLower();
             return extensions.Contains(ext);
         }
+
+        private async void OpenComicMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                OpenComic(comic);
+            }
+        }
+
+        private async void EditTagsMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                EditComicTags(comic);
+            }
+        }
+
+        private async void ShareComicMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                ShareComic(comic);
+            }
+        }
+        private async void RemoveComicMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                RemoveComic(comic);
+            }
+        }
+        private async void DeleteComicMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                DeleteComicFile(comic);
+            }
+        }
+
+
 
         private async void ClearFilters_Click(object sender, RoutedEventArgs e) 
         {

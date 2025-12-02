@@ -11,10 +11,12 @@ namespace ComicViewer.Models
 {
     public class ComicTag
     {
+        [Column("ComicKey", TypeName = "TEXT")]
         [StringLength(32)]
         [Comment("漫画MD5外键")]
         public string ComicKey { get; set; }
 
+        [Column("TagKey", TypeName = "TEXT")]
         [StringLength(32)]
         [Comment("标签MD5外键")]
         public string TagKey { get; set; }

@@ -186,8 +186,38 @@
                         <DataTemplate>
                             <!-- 漫画卡片模板 -->
                             <Border Style="{StaticResource CompactComicCard}"
-                        ToolTip="{Binding Converter={StaticResource ToolTipConverter}}"
-                        MouseLeftButtonUp="ComicCard_Click">
+                                    ToolTip="{Binding Converter={StaticResource ToolTipConverter}}"
+                                    MouseLeftButtonUp="ComicCard_Click">
+                                <Border.ContextMenu>
+                                    <ContextMenu>
+                                        <MenuItem Header="📖 打开漫画"
+                                                  Click="OpenComicMenuItem_Click">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="▶" FontSize="14"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <MenuItem Header="🏷️ 编辑标签"
+                                                  Click="EditTagsMenuItem_Click">
+                                            <MenuItem.Icon>
+                                                <TextBlock Text="🏷" FontSize="14"/>
+                                            </MenuItem.Icon>
+                                        </MenuItem>
+
+                                        <Separator/>
+
+                                        <MenuItem Header="📤 分享漫画"
+                                                  Click="ShareComicMenuItem_Click"/>
+
+                                        <MenuItem Header="🗑️ 从库中移除"
+                                                  Click="RemoveComicMenuItem_Click"
+                                                  Foreground="Red"/>
+
+                                        <MenuItem Header="⚠️ 删除文件"
+                                                  Click="DeleteComicMenuItem_Click"
+                                                  Foreground="DarkRed"/>
+                                    </ContextMenu>
+                                </Border.ContextMenu>
 
                                 <!-- 卡片内容 -->
                                 <Grid>
