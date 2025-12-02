@@ -215,8 +215,7 @@ namespace ComicViewer.Models
                 _length = archive.Entries.Count();
                 var imageEntry = archive.Entries
                     .FirstOrDefault(e => e.Key != null && Path.GetFileName(e.Key)!.Equals("cover.jpg"))
-                    ?? archive.Entries.OrderBy(e => e.Key)
-                        .FirstOrDefault();
+                    ?? archive.Entries.Where(e => !e.IsDirectory).OrderBy(e => e.Key).FirstOrDefault();
 
                 if (imageEntry == null)
                 {
