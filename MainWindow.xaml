@@ -1,0 +1,379 @@
+﻿<Window x:Class="ComicViewer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Height="800" Width="1200"
+        Background="#FAFAFA">
+
+    <Window.Resources>
+
+        <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                            xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                            xmlns:Converter="clr-namespace:ComicViewer.Converters">
+
+            <ResourceDictionary.MergedDictionaries>
+                <!-- 加载分离的资源文件 -->
+                <ResourceDictionary Source="Styles/Buttons.xaml"/>
+                <ResourceDictionary Source="Styles/Cards.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+
+            <!-- 转换器实例 -->
+            <Converter:ToolTipConverter x:Key="ToolTipConverter"/>
+
+            <!-- 圆角文本框样式 -->
+            <Style x:Key="RoundTextBoxStyle" TargetType="TextBox">
+                <Setter Property="Height" Value="28"/>
+                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="Padding" Value="8,4"/>
+                <Setter Property="Background" Value="#F5F5F5"/>
+                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="TextBox">
+                            <Border x:Name="border" 
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="14">
+                                <ScrollViewer x:Name="PART_ContentHost" 
+                                          Margin="0"
+                                          VerticalAlignment="Center"/>
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="border" Property="BorderBrush" Value="#2196F3"/>
+                                </Trigger>
+                                <Trigger Property="IsFocused" Value="True">
+                                    <Setter TargetName="border" Property="BorderBrush" Value="#2196F3"/>
+                                    <Setter TargetName="border" Property="BorderThickness" Value="1"/>
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+        </ResourceDictionary>
+    </Window.Resources>
+
+    <Grid>
+        <!-- 顶部紧凑工具栏 -->
+        <Border Height="45" Background="White" 
+                VerticalAlignment="Top"
+                BorderBrush="#E0E0E0" BorderThickness="0,0,0,1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 左侧：设置按钮 -->
+                <Button Grid.Column="0" 
+                        Style="{StaticResource IconButtonStyle}"
+                        Width="40" Height="40"
+                        Margin="5">
+                    <TextBlock Text="⚙️" FontSize="16"/>
+                </Button>
+
+                <!-- 中间：搜索和排序 -->
+                <StackPanel Grid.Column="1" 
+                            Orientation="Horizontal"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center">
+                    <!-- 紧凑搜索框 -->
+                    <Border Width="280" Height="32"
+                            Background="#F5F5F5"
+                            CornerRadius="16">
+                        <Grid>
+                            <TextBox x:Name="MainSearchBox"
+                                     TextChanged="OnTagSearchChanged">
+                                <TextBox.Resources>
+                                    <!-- 水印效果 -->
+                                    <VisualBrush x:Key="PlaceholderBrush" 
+                                                 AlignmentX="Left" 
+                                                 AlignmentY="Center" 
+                                                 Stretch="None">
+                                        <VisualBrush.Visual>
+                                            <TextBlock Text="🔍 搜索漫画..." 
+                                                       Foreground="#888"
+                                                       FontSize="12"
+                                                       Margin="8,0"/>
+                                        </VisualBrush.Visual>
+                                    </VisualBrush>
+                                </TextBox.Resources>
+                                <TextBox.Style>
+                                    <Style BasedOn="{StaticResource RoundTextBoxStyle}" TargetType="TextBox">
+                                        <Style.Triggers>
+                                            <Trigger Property="Text" Value="">
+                                                <Setter Property="Background" Value="{StaticResource PlaceholderBrush}"/>
+                                            </Trigger>
+                                            <Trigger Property="Text" Value="{x:Null}">
+                                                <Setter Property="Background" Value="{StaticResource PlaceholderBrush}"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBox.Style>
+                            </TextBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- 紧凑排序下拉 -->
+                    <ComboBox x:Name="SortCombo"
+                              Width="110" Height="32"
+                              Margin="10,0"
+                              FontSize="13"
+                              SelectedIndex="0"
+                              Background="Transparent"
+                              SelectionChanged="SortCombo_SelectionChanged">
+                        <ComboBoxItem>最新添加</ComboBoxItem>
+                        <ComboBoxItem>最近阅读</ComboBoxItem>
+                        <ComboBoxItem>标题 A-Z</ComboBoxItem>
+                        <ComboBoxItem>标题 Z-A</ComboBoxItem>
+                        <ComboBoxItem>评分最高</ComboBoxItem>
+                    </ComboBox>
+
+                    <!-- 活动筛选标签（动态显示） -->
+                    <ItemsControl x:Name="ActiveFilterChips"
+                                  ItemsSource="{Binding ActiveFilters}"
+                                  Margin="10,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </StackPanel>
+
+                <!-- 右侧：添加按钮 -->
+                <Button Grid.Column="2"
+                        Width="90" Height="32"
+                        Margin="0,0,10,0"
+                        Style="{StaticResource AccentButtonStyle}"
+                        Click="AddComics_Click">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="＋" Margin="0,0,4,0"/>
+                        <TextBlock Text="添加漫画"/>
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- 主内容区 -->
+        <Grid Margin="0,45,0,25">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="180"/>
+                <!-- 紧凑标签栏 -->
+            </Grid.ColumnDefinitions>
+
+            <ScrollViewer Grid.Column="0" 
+              x:Name="ComicScrollViewer"
+              VerticalScrollBarVisibility="Auto"
+              PreviewMouseWheel="OnPreviewMouseWheel">
+
+                <!-- 使用ItemsControl并绑定到Comics集合 -->
+                <ItemsControl x:Name="ComicItemsControl"
+                  ItemsSource="{Binding Comics}"
+                  HorizontalAlignment="Left"
+                  Margin="10,0">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <!-- WrapPanel实现网格布局 -->
+                            <WrapPanel Orientation="Horizontal"/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <!-- 漫画卡片模板 -->
+                            <Border Style="{StaticResource CompactComicCard}"
+                        ToolTip="{Binding Converter={StaticResource ToolTipConverter}}"
+                        MouseLeftButtonUp="ComicCard_Click">
+
+                                <!-- 卡片内容 -->
+                                <Grid>
+                                    <!-- 封面绑定 -->
+                                    <Image Width="280"
+                               Stretch="None"
+                               Source="{Binding CoverImage}"/>
+
+                                    <!-- 标题和标签区域 -->
+                                    <Border Background="#80000000" 
+                                VerticalAlignment="Bottom"
+                                Height="55">
+                                        <StackPanel>
+                                            <TextBlock Text="{Binding Title}" 
+                                           FontSize="12"
+                                           FontWeight="Medium"
+                                           Margin="5,5,5,0"
+                                           TextWrapping="Wrap"
+                                           MaxHeight="36"
+                                           TextTrimming="CharacterEllipsis"
+                                           Foreground="White"/>
+
+                                            <TextBlock Text="{Binding TagsPreview}" 
+                                           FontSize="10"
+                                           Foreground="#CCCCCC"
+                                           Margin="5,0,5,5"
+                                           TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Border>
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </ScrollViewer>
+
+            <!-- 标签侧栏 -->
+            <Border Grid.Column="1" 
+                    x:Name="TagPanel"
+                    Background="#FAFAFA"
+                    BorderBrush="#E0E0E0" 
+                    BorderThickness="1,0,0,0">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <!-- 标签栏标题 -->
+                    <Border Grid.Row="0" 
+                            Background="White"
+                            BorderBrush="#E0E0E0"
+                            BorderThickness="0,0,0,1"
+                            Padding="12,8">
+                        <TextBlock Text="🏷️ 标签" 
+                                   FontSize="13"
+                                   FontWeight="SemiBold"/>
+                    </Border>
+
+                    <!-- 标签搜索 -->
+                    <Border Grid.Row="1" Padding="10,8">
+                        <TextBox x:Name="TagSearchBox"
+                                 TextChanged="OnTagSearchChanged">
+                            <TextBox.Resources>
+                                <!-- 水印效果 -->
+                                <VisualBrush x:Key="PlaceholderBrush" 
+                                             AlignmentX="Left" 
+                                             AlignmentY="Center" 
+                                             Stretch="None">
+                                    <VisualBrush.Visual>
+                                        <TextBlock Text="🔍 搜索标签..." 
+                                                   Foreground="#888"
+                                                   FontSize="12"
+                                                   Margin="8,0"/>
+                                    </VisualBrush.Visual>
+                                </VisualBrush>
+                            </TextBox.Resources>
+                            <TextBox.Style>
+                                <Style BasedOn="{StaticResource RoundTextBoxStyle}" TargetType="TextBox">
+                                    <Style.Triggers>
+                                        <Trigger Property="Text" Value="">
+                                            <Setter Property="Background" Value="{StaticResource PlaceholderBrush}"/>
+                                        </Trigger>
+                                        <Trigger Property="Text" Value="{x:Null}">
+                                            <Setter Property="Background" Value="{StaticResource PlaceholderBrush}"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBox.Style>
+                        </TextBox>
+                    </Border>
+
+                    <!-- 标签列表 -->
+                    <ScrollViewer Grid.Row="2"
+                                  VerticalScrollBarVisibility="Auto"
+                                  Padding="10,0,10,10">
+                        <VirtualizingStackPanel>
+                            <ItemsControl x:Name="TagListControlChecked"
+                                          ItemsSource="{Binding SelectedTags}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Margin="0,1"
+                                                  IsChecked="True"
+                                                  Unchecked="TagCheckBox_Unchecked">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}"
+                                                           FontSize="12"
+                                                           Margin="4,0,4,0"/>
+                                                <TextBlock Text="{Binding Count}" 
+                                                           Foreground="#888"
+                                                           FontSize="11"/>
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                            <ItemsControl x:Name="TagListControlUnchecked"
+                                          ItemsSource="{Binding UnselectedTags}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <CheckBox Margin="0,1"
+                                                  IsChecked="False"
+                                                  Checked="TagCheckBox_Checked">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Name}" 
+                                                           FontSize="12"
+                                                           Margin="4,0,4,0"/>
+                                                <TextBlock Text="{Binding Count}" 
+                                                           Foreground="#888"
+                                                           FontSize="11"/>
+                                            </StackPanel>
+                                        </CheckBox>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </VirtualizingStackPanel>
+                    </ScrollViewer>
+
+                    <!-- 标签操作 -->
+                    <Border Grid.Row="3" 
+                            Background="White"
+                            BorderBrush="#E0E0E0"
+                            BorderThickness="0,1,0,0"
+                            Padding="10,8">
+                        <StackPanel Orientation="Horizontal" 
+                                    HorizontalAlignment="Right">
+                            <Button x:Name="ClearFilterButton"
+                                    Content="清除筛选"
+                                    Height="28"
+                                    Padding="12,0"
+                                    FontSize="12"
+                                    Style="{StaticResource TextButtonStyle}"
+                                    Click="ClearFilters_Click"
+                                    IsEnabled="{Binding HasActiveFilters}"/>
+                        </StackPanel>
+                    </Border>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 底部状态栏 -->
+        <Border Height="25" 
+                VerticalAlignment="Bottom"
+                Background="#F5F5F5"
+                BorderBrush="#E0E0E0" 
+                BorderThickness="0,1,0,0">
+            <Grid>
+                <TextBlock x:Name="StatusText"
+                           VerticalAlignment="Center"
+                           Margin="10,0"
+                           FontSize="11"
+                           Foreground="#666">
+                    <Run Text="就绪"/>
+                </TextBlock>
+
+                <TextBlock x:Name="CountText"
+                           HorizontalAlignment="Right"
+                           VerticalAlignment="Center"
+                           Margin="10,0"
+                           FontSize="11"
+                           Foreground="#666">
+                    <Run Text="加载中..."/>
+                </TextBlock>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
