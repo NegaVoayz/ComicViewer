@@ -78,5 +78,22 @@ namespace ComicViewer.Services
             await ComicService.Instance.AddComicAsync(comic);
             return comic.ToComicModel();
         }
+
+        public static async Task MigrateComicLibrary(string sourcePath, string destinationPath)
+        {
+            var comics = await ComicService.Instance.GetAllComicsAsync();
+            foreach (var comic in comics)
+            {
+                var fileName = $"{comic.Key}.zip";
+                var sourceFilePath = Path.Combine(sourcePath, fileName);
+                var destFilePath = Path.Combine(destinationPath, fileName);
+                SilentFileLoader.Instance.AddMovingTask(new MovingFileModel
+                {
+                    Key = comic.Key,
+                    SourcePath = sourceFilePath,
+                    DestinationPath = destFilePath
+                });
+            }
+        }
     }
 }

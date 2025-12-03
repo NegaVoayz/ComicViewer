@@ -14,7 +14,7 @@ namespace ComicViewer.Database
     {
         private readonly IDbContextFactory<ComicContext> _contextFactory = new PooledDbContextFactory<ComicContext>(
             new DbContextOptionsBuilder<ComicContext>()
-            .UseSqlite($"Data Source={Path.Combine(Configs.GetFilePath(), "comics.db")}")
+            .UseSqlite($"Data Source={Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "comics.db")}")
             .Options);
 
         private static readonly Lazy<ComicService> _instance = new(() => new ComicService());

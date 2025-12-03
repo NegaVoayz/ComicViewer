@@ -27,6 +27,7 @@ namespace ComicViewer
         private int _visibleStartIndex = 0;
         private int _visibleEndIndex = 50; // 初始加载50个
 
+
         public MainWindow()
         {
             InitializeComponent();
@@ -36,6 +37,8 @@ namespace ComicViewer
 
             _loader = new ComicLoader();
             _exporter = new ComicExporter();
+
+            InitializeSaveDirectory();
 
             // 初始加载漫画
             Loaded += async (s, e) => await InitializeComicsAsync();
@@ -60,6 +63,99 @@ namespace ComicViewer
             }
 
             await taskMoves;
+        }
+
+        private void InitializeSaveDirectory()
+        {
+            try
+            {
+                // 从配置文件或默认位置获取保存目录
+                _viewModel.CurrentSaveDirectory = Configs.GetFilePath();
+                UpdateSaveDirectoryDisplay();
+
+                // 异步计算存储使用情况
+                _ = CalculateStorageUsageAsync();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"初始化保存目录时出错: {ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void UpdateSaveDirectoryDisplay()
+        {
+            if (SaveDirectoryText != null)
+            {
+                // 显示缩短的路径（如果需要）
+                if (_viewModel.CurrentSaveDirectory.Length > 50)
+                {
+                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory.Substring(0, 20) +
+                                            "..." +
+                                            _viewModel.CurrentSaveDirectory.Substring(_viewModel.CurrentSaveDirectory.Length - 25);
+                    SaveDirectoryText.ToolTip = _viewModel.CurrentSaveDirectory;
+                }
+                else
+                {
+                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory;
+                    SaveDirectoryText.ToolTip = null;
+                }
+            }
+        }
+
+        private async Task CalculateStorageUsageAsync()
+        {
+            try
+            {
+                if (StorageUsageText == null || string.IsNullOrEmpty(_viewModel.CurrentSaveDirectory) ||
+                    !Directory.Exists(_viewModel.CurrentSaveDirectory))
+                    return;
+
+                await Task.Run(() =>
+                {
+                    long totalSize = 0;
+                    long fileCount = 0;
+
+                    // 计算目录大小（避免UI线程阻塞）
+                    var files = Directory.GetFiles(_viewModel.CurrentSaveDirectory, "*.*", SearchOption.AllDirectories);
+                    fileCount = files.Length;
+
+                    foreach (var file in files)
+                    {
+                        try
+                        {
+                            var info = new FileInfo(file);
+                            totalSize += info.Length;
+                        }
+                        catch { /* 忽略无法访问的文件 */ }
+                    }
+
+                    // 回到UI线程更新显示
+                    Dispatcher.Invoke(() =>
+                    {
+                        if (StorageUsageText != null)
+                        {
+                            string sizeText;
+                            if (totalSize > 1024 * 1024 * 1024) // GB
+                                sizeText = $"{(double)totalSize / (1024 * 1024 * 1024):F2} GB";
+                            else if (totalSize > 1024 * 1024) // MB
+                                sizeText = $"{(double)totalSize / (1024 * 1024):F2} MB";
+                            else if (totalSize > 1024) // KB
+                                sizeText = $"{(double)totalSize / 1024:F2} KB";
+                            else
+                                sizeText = $"{totalSize} B";
+
+                            StorageUsageText.Text = $"{fileCount} 个文件 · {sizeText}";
+                        }
+                    });
+                });
+            }
+            catch (Exception)
+            {
+                // 忽略计算错误
+                if (StorageUsageText != null)
+                    StorageUsageText.Text = "无法计算存储空间";
+            }
         }
 
         private void UpdateStatus(string message)
@@ -463,6 +559,167 @@ namespace ComicViewer
             scrollViewer.ScrollToVerticalOffset(
                 scrollViewer.VerticalOffset - e.Delta);
             e.Handled = true;
+        }
+
+        private void CopyDirectoryPath_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                Clipboard.SetText(_viewModel.CurrentSaveDirectory);
+                ShowStatusMessage("目录路径已复制到剪贴板", 2000);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"复制失败: {ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void RefreshStorageInfo_Click(object sender, RoutedEventArgs e)
+        {
+            _ = CalculateStorageUsageAsync();
+            ShowStatusMessage("正在刷新存储信息...", 1000);
+        }
+
+        private void ChangeSaveDirectory_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 关闭设置菜单
+                SettingsToggleButton.IsChecked = false;
+
+                // 调用更改目录的方法（你可以在这里实现具体逻辑）
+                OnChangeSaveDirectoryRequested();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"更改目录时出错: {ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OpenSaveDirectory_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                if (Directory.Exists(_viewModel.CurrentSaveDirectory))
+                {
+                    System.Diagnostics.Process.Start("explorer.exe", _viewModel.CurrentSaveDirectory);
+                }
+                else
+                {
+                    MessageBox.Show("目录不存在或无法访问", "错误",
+                        MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开目录失败: {ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void OnChangeSaveDirectoryRequested()
+        {
+            // TODO: 实现选择新目录的逻辑
+
+            // 示例代码：
+            var dialog = new OpenFolderDialog
+            {
+                Title = "选择漫画保存目录",
+                Multiselect = false,
+                InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                ValidateNames = true
+            };
+
+
+            // 显示对话框
+            bool? result = dialog.ShowDialog();
+
+            if (result == true && dialog.FolderName.Length > 0)
+            {
+                var newPath = dialog.FolderName;
+                // 验证目录是否有效
+                if (ValidateNewDirectory(newPath))
+                {
+                    // 更新配置
+                    var oldPath = _viewModel.CurrentSaveDirectory;
+                    Configs.SetFilePath(newPath);
+                    _viewModel.CurrentSaveDirectory = newPath;
+
+                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory;
+
+                    //_ = CalculateStorageUsageAsync();
+
+                    // 重新加载漫画库
+                    _ = ComicLoader.MigrateComicLibrary(oldPath, newPath);
+                    
+                    ShowStatusMessage($"保存目录已更改为: {newPath}", 3000);
+                }
+            }
+        }
+
+        private bool ValidateNewDirectory(string path)
+        {
+            try
+            {
+                // 检查目录是否可访问
+                if (!Directory.Exists(path))
+                {
+                    var result = MessageBox.Show("目录不存在，是否创建?", "确认",
+                        MessageBoxButton.YesNo, MessageBoxImage.Question);
+
+                    if (result == MessageBoxResult.Yes)
+                    {
+                        Directory.CreateDirectory(path);
+                        return true;
+                    }
+                    return false;
+                }
+
+                // 检查是否有写入权限
+                var testFile = Path.Combine(path, "test.tmp");
+                File.WriteAllText(testFile, "test");
+                File.Delete(testFile);
+
+                return true;
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("目录没有写入权限或不可访问", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                return false;
+            }
+        }
+
+        private void ShowStatusMessage(string message, int durationMs = 2000)
+        {
+            if (StatusText != null)
+            {
+                StatusText.Text = message;
+
+                // 定时恢复原状态
+                var timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(durationMs)
+                };
+                timer.Tick += (s, e) =>
+                {
+                    timer.Stop();
+                    StatusText.Text = "就绪";
+                };
+                timer.Start();
+            }
+        }
+
+        private void Window_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            if (SettingsPopup.IsOpen &&
+                !SettingsPopup.IsMouseOver &&
+                !SettingsToggleButton.IsMouseOver)
+            {
+                SettingsToggleButton.IsChecked = false;
+            }
         }
     }
 }

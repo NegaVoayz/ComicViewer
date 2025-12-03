@@ -14,7 +14,7 @@ using System.Windows.Shapes;
 
 namespace ComicViewer.Services
 {
-    public struct Entry
+    struct Entry
     {
         public string Path { get; set; }
         public int UseCount { get; set; }
@@ -56,6 +56,8 @@ namespace ComicViewer.Services
             {
                 if (comicPathDict.ContainsKey(key))
                 {
+                    var entry = comicPathDict[key];
+                    comicPathDict[key] = new Entry { Path = entry.Path, UseCount = entry.UseCount + 1 };
                     return false;
                 }
                 comicPathDict[key] = new Entry{Path=path, UseCount=1};
@@ -98,27 +100,27 @@ namespace ComicViewer.Services
             return System.IO.Path.Combine(Configs.GetFilePath(), $"{comic.Key}.zip");
         }
 
-        public void ReleaseComicPath(ComicModel comic)
+        public void ReleaseComicPath(string Key)
         {
             lock (_lock)
             {
                 Entry entry;
-                if (comicPathDict.TryGetValue(comic.Key, out entry))
+                if (comicPathDict.TryGetValue(Key, out entry))
                 {
-                    comicPathDict[comic.Key] = new Entry { Path = entry.Path, UseCount = entry.UseCount - 1 };
+                    comicPathDict[Key] = new Entry { Path = entry.Path, UseCount = entry.UseCount - 1 };
                     return;
                 }
-                if (comicPathDictRemove.TryGetValue(comic.Key, out entry))
+                if (comicPathDictRemove.TryGetValue(Key, out entry))
                 {
                     int newCount = entry.UseCount - 1;
                     if (newCount <= 0)
                     {
-                        comicPathDictRemove.Remove(comic.Key);
+                        comicPathDictRemove.Remove(Key);
                         _ = RemoveTempFile(entry.Path);// silent remove
                     }
                     else
                     {
-                        comicPathDictRemove[comic.Key] = new Entry { Path = entry.Path, UseCount = entry.UseCount - 1 };
+                        comicPathDictRemove[Key] = new Entry { Path = entry.Path, UseCount = entry.UseCount - 1 };
                     }
                 }
             }
@@ -172,7 +174,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic);
+                    ReleaseComicPath(comic.Key);
                 }
             });
         }
@@ -228,7 +230,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic);
+                    ReleaseComicPath(comic.Key);
                 }
             });
         }
@@ -299,7 +301,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic);
+                    ReleaseComicPath(comic.Key);
                 }
             });
         }

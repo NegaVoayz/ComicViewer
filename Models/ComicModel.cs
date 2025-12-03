@@ -99,11 +99,7 @@ namespace ComicViewer.Models
         public int Progress
         {
             get => _progress;
-            set
-            {
-                _progress = value;
-                OnPropertyChanged();
-            }
+            set => SetField(ref _progress, value);
         }
 
         public int Length
@@ -123,11 +119,7 @@ namespace ComicViewer.Models
                 }
                 return _length;
             }
-            private set
-            {
-                _length = value;
-                OnPropertyChanged();
-            }
+            private set => SetField(ref _length, value);
         }
 
         public BitmapImage CoverImage
@@ -143,11 +135,7 @@ namespace ComicViewer.Models
                 }
                 return _coverImage ?? LoadPlaceholderImage();
             }
-            private set
-            {
-                _coverImage = value;
-                OnPropertyChanged();
-            }
+            private set => SetField(ref _coverImage, value);
         }
         public string TagsPreview
         {

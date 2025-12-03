@@ -27,7 +27,7 @@ namespace ComicViewer.Database
         {
             if (!optionsBuilder.IsConfigured)
             {
-                string dbPath = Path.Combine(Configs.GetFilePath(), "comics.db");
+                string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "comics.db");
 
                 // 确保目录存在
                 Directory.CreateDirectory(Path.GetDirectoryName(dbPath));

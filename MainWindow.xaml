@@ -67,12 +67,231 @@
                 </Grid.ColumnDefinitions>
 
                 <!-- 左侧：设置按钮 -->
-                <Button Grid.Column="0" 
-                        Style="{StaticResource IconButtonStyle}"
-                        Width="40" Height="40"
-                        Margin="5">
-                    <TextBlock Text="⚙️" FontSize="16"/>
-                </Button>
+                <!-- 左侧：设置按钮（修改后） -->
+                <Grid Grid.Column="0">
+                    <!-- 设置按钮 -->
+                    <ToggleButton x:Name="SettingsToggleButton"
+                                  Style="{StaticResource IconToggleButtonStyle}"
+                                  Width="40" Height="40"
+                                  Margin="5">
+                        <TextBlock Text="⚙️" FontSize="16"/>
+                    </ToggleButton>
+
+                    <!-- 设置菜单 -->
+                    <Popup x:Name="SettingsPopup"
+                           Placement="Bottom"
+                           PlacementTarget="{Binding ElementName=SettingsToggleButton}"
+                           IsOpen="{Binding ElementName=SettingsToggleButton, Path=IsChecked}"
+                           StaysOpen="False"
+                           AllowsTransparency="True"
+                           PopupAnimation="Fade"
+                           Width="280">
+                        <Border Background="White"
+                                BorderBrush="#E0E0E0"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Effect="{StaticResource DropShadowEffect}">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+
+                                <!-- 菜单标题 -->
+                                <Border Grid.Row="0" 
+                                        Background="#F8F9FA"
+                                        BorderBrush="#E0E0E0"
+                                        BorderThickness="0,0,0,1"
+                                        Padding="16,12">
+                                    <TextBlock Text="⚙️ 设置" 
+                                               FontSize="14"
+                                               FontWeight="SemiBold"
+                                               Foreground="#333333"/>
+                                </Border>
+
+                                <!-- 当前保存目录显示 -->
+                                <Border Grid.Row="1"
+                                        Padding="16,12"
+                                        BorderBrush="#F0F0F0"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- 标题 -->
+                                        <TextBlock Grid.Row="0"
+                                                   Text="📁 保存目录"
+                                                   FontSize="13"
+                                                   FontWeight="Medium"
+                                                   Margin="0,0,0,6"
+                                                   Foreground="#555555"/>
+
+                                        <!-- 目录路径 -->
+                                        <Border Grid.Row="1"
+                                                Background="#F8F9FA"
+                                                BorderBrush="#E0E0E0"
+                                                BorderThickness="1"
+                                                CornerRadius="3"
+                                                Padding="10,8"
+                                                Margin="0,0,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*"/>
+                                                    <ColumnDefinition Width="Auto"/>
+                                                </Grid.ColumnDefinitions>
+
+                                                <!-- 目录路径文本 -->
+                                                <TextBlock x:Name="SaveDirectoryText"
+                                                           Grid.Column="0"
+                                                           Text="{Binding CurrentSaveDirectory}"
+                                                           FontSize="12"
+                                                           TextWrapping="Wrap"
+                                                           Foreground="#666666"/>
+
+                                                <!-- 复制按钮 -->
+                                                <Button Grid.Column="1"
+                                                        Content="📋"
+                                                        Width="24" Height="24"
+                                                        Padding="0"
+                                                        Click="CopyDirectoryPath_Click"
+                                                        ToolTip="复制路径">
+                                                    <Button.Style>
+                                                        <Style BasedOn="{StaticResource IconButtonStyle}" TargetType="Button">
+                                                            <Setter Property="Background" Value="Transparent"/>
+                                                            <Setter Property="BorderThickness" Value="0"/>
+                                                            <Setter Property="Template">
+                                                                <Setter.Value>
+                                                                    <ControlTemplate TargetType="Button">
+                                                                        <Border x:Name="border"
+                                                                                Background="{TemplateBinding Background}"
+                                                                                CornerRadius="3">
+                                                                            <ContentPresenter HorizontalAlignment="Center"
+                                                                                              VerticalAlignment="Center"/>
+                                                                        </Border>
+                                                                        <ControlTemplate.Triggers>
+                                                                            <Trigger Property="IsMouseOver" Value="True">
+                                                                                <Setter TargetName="border" Property="Background" Value="#E8E8E8"/>
+                                                                            </Trigger>
+                                                                        </ControlTemplate.Triggers>
+                                                                    </ControlTemplate>
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </Style>
+                                                    </Button.Style>
+                                                </Button>
+                                            </Grid>
+                                        </Border>
+
+                                        <!-- 存储信息 -->
+                                        <Grid Grid.Row="2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*"/>
+                                                <ColumnDefinition Width="Auto"/>
+                                            </Grid.ColumnDefinitions>
+
+                                            <!-- 存储使用情况 -->
+                                            <TextBlock x:Name="StorageUsageText"
+                                                       Grid.Column="0"
+                                                       Text="正在计算存储空间..."
+                                                       FontSize="11"
+                                                       Foreground="#888888"/>
+
+                                            <!-- 刷新按钮 -->
+                                            <Button Grid.Column="1"
+                                                    Content="🔄"
+                                                    Width="20" Height="20"
+                                                    Padding="0"
+                                                    Style="{StaticResource IconButtonStyle}"
+                                                    Click="RefreshStorageInfo_Click"
+                                                    ToolTip="刷新存储信息"/>
+                                        </Grid>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 更改保存目录 -->
+                                <Border Grid.Row="2"
+                                        Padding="16,12"
+                                        BorderBrush="#F0F0F0"
+                                        BorderThickness="0,0,0,1">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="Auto"/>
+                                        </Grid.RowDefinitions>
+
+                                        <!-- 标题 -->
+                                        <TextBlock Grid.Row="0"
+                                                   Text="更改保存目录"
+                                                   FontSize="13"
+                                                   FontWeight="Medium"
+                                                   Margin="0,0,0,8"
+                                                   Foreground="#555555"/>
+
+                                        <!-- 更改目录按钮 -->
+                                        <Button Grid.Row="1"
+                                                x:Name="ChangeDirectoryButton"
+                                                Content="📂 选择新目录..."
+                                                Height="32"
+                                                Click="ChangeSaveDirectory_Click">
+                                            <Button.Style>
+                                                <Style BasedOn="{StaticResource AccentButtonStyle}" TargetType="Button">
+                                                    <Setter Property="Background" Value="#4285F4"/>
+                                                    <Setter Property="Foreground" Value="White"/>
+                                                    <Setter Property="Template">
+                                                        <Setter.Value>
+                                                            <ControlTemplate TargetType="Button">
+                                                                <Border x:Name="border"
+                                                                        Background="{TemplateBinding Background}"
+                                                                        CornerRadius="4"
+                                                                        Padding="12,0">
+                                                                    <ContentPresenter HorizontalAlignment="Center"
+                                                                                      VerticalAlignment="Center"/>
+                                                                </Border>
+                                                                <ControlTemplate.Triggers>
+                                                                    <Trigger Property="IsMouseOver" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="#3367D6"/>
+                                                                    </Trigger>
+                                                                    <Trigger Property="IsPressed" Value="True">
+                                                                        <Setter TargetName="border" Property="Background" Value="#2A56C6"/>
+                                                                    </Trigger>
+                                                                </ControlTemplate.Triggers>
+                                                            </ControlTemplate>
+                                                        </Setter.Value>
+                                                    </Setter>
+                                                </Style>
+                                            </Button.Style>
+                                        </Button>
+                                    </Grid>
+                                </Border>
+
+                                <!-- 分隔线 -->
+                                <Border Grid.Row="3" 
+                                        Height="1" 
+                                        Background="#F0F0F0"/>
+
+                                <!-- 底部操作 -->
+                                <StackPanel Grid.Row="4"
+                                            Orientation="Horizontal"
+                                            HorizontalAlignment="Right"
+                                            Margin="16,12">
+                                    <Button x:Name="OpenDirectoryButton"
+                                            Content="📁 打开目录"
+                                            Height="28"
+                                            Padding="12,0"
+                                            Style="{StaticResource TextButtonStyle}"
+                                            Click="OpenSaveDirectory_Click"
+                                            ToolTip="在文件资源管理器中打开"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+                    </Popup>
+                </Grid>
 
                 <!-- 中间：搜索和排序 -->
                 <StackPanel Grid.Column="1" 

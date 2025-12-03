@@ -3,7 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.Json.Nodes;
+using System.Text.Json;
 using System.Threading.Tasks;
+using System.IO;
 
 namespace ComicViewer
 {
@@ -18,7 +21,6 @@ namespace ComicViewer
                                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                                 //生成配置项
                                 .Build();
-        //private static readonly string filepath = "E:\\comics";
         public static IConfiguration Get()
         {
             return configure;
@@ -26,6 +28,32 @@ namespace ComicViewer
         public static string GetFilePath()
         {
             return configure.GetRequiredSection("comic_path").Value ?? "D:\\comics";
+        }
+        public static bool SetFilePath(string newPath)
+        {
+            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
+            // 读取现有的配置文件内容
+            var jsonContent = File.ReadAllText(path);
+            var jsonObject = JsonSerializer.Deserialize<JsonObject>(jsonContent);
+
+            if (jsonObject == null)
+            {
+                throw new Exception("配置文件格式错误");
+            }
+
+            // 更新 comic_path 值
+            jsonObject["comic_path"] = newPath;
+
+            // 保存回文件
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true // 保持缩进格式
+            };
+
+            var updatedJson = JsonSerializer.Serialize(jsonObject, options);
+            File.WriteAllText(path, updatedJson);
+
+            return true;
         }
     }
 }

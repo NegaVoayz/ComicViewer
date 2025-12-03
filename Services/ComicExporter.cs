@@ -123,7 +123,7 @@ namespace ComicViewer.Services
             }
             finally
             {
-                ComicFileService.Instance.ReleaseComicPath(comic);
+                ComicFileService.Instance.ReleaseComicPath(comic.Key);
             }
         }
     }
