@@ -22,6 +22,7 @@ namespace ComicViewer
     {
         private ComicViewModel _viewModel;
         private readonly ComicLoader _loader;
+        private readonly ComicExporter _exporter;
         private bool _isLoading;
         private int _visibleStartIndex = 0;
         private int _visibleEndIndex = 50; // 初始加载50个
@@ -34,6 +35,7 @@ namespace ComicViewer
             DataContext = _viewModel;
 
             _loader = new ComicLoader();
+            _exporter = new ComicExporter();
 
             // 初始加载漫画
             Loaded += async (s, e) => await InitializeComicsAsync();
@@ -45,18 +47,19 @@ namespace ComicViewer
 
         private async Task InitializeComicsAsync()
         {
+            var taskMoves = SilentFileLoader.Instance.RecoverMovingTask();
             var comics = await ComicService.Instance.GetAllComicsAsync();
-            var tags = await ComicService.Instance.GetAllTagsAsync();
-
-            // 添加到ViewModel的集合中
             foreach (var comic in comics)
             {
                 _viewModel.Comics.Add(comic);
             }
+            var tags = await ComicService.Instance.GetAllTagsAsync();
             foreach (var tag in tags)
             {
                 _viewModel.UnselectedTags.Add(tag);
             }
+
+            await taskMoves;
         }
 
         private void UpdateStatus(string message)
@@ -125,31 +128,31 @@ namespace ComicViewer
             }
         }
 
-        private async Task OpenComic(ComicModel comic)
+        private void OpenComic(ComicModel comic)
         {
             try
             {
                 UpdateStatus($"正在打开: {comic.Title}");
 
-                // 创建并显示阅读器窗口
+                // 创建并显示阅读器窗口（非模态）
                 var readerWindow = new ComicReaderWindow(comic)
                 {
                     Owner = this,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner
                 };
 
-                // 显示窗口（模态对话框）
-                readerWindow.ShowDialog();
-
-                // 更新阅读进度
-                if (readerWindow.LastReadPage > 0)
+                // 订阅窗口关闭事件
+                readerWindow.Closed += async (s, e) =>
                 {
-                    // 进度已经在阅读器关闭时更新了
-                    UpdateStatus($"已阅读到第 {readerWindow.LastReadPage} 页");
+                    if (readerWindow.LastReadPage > 0)
+                    {
+                        UpdateStatus($"已阅读到第 {readerWindow.LastReadPage} 页");
+                        await SaveComicProgressAsync(comic);
+                    }
+                };
 
-                    // 保存到元数据文件
-                    await SaveComicProgressAsync(comic);
-                }
+                // 显示窗口（非模态）
+                readerWindow.Show();
             }
             catch (Exception ex)
             {
@@ -200,7 +203,8 @@ namespace ComicViewer
 
             if (saveDialog.ShowDialog() == true)
             {
-                await _loader.CreateSharePackageAsync(comic, saveDialog.FileName);
+                await _exporter.CreateSharePackageAsync(comic, saveDialog.FileName);
+                MessageBox.Show("分享包创建成功！");
             }
         }
          
@@ -225,6 +229,8 @@ namespace ComicViewer
             if (result == MessageBoxResult.Yes)
             {
                 _viewModel.Comics.Remove(comic);
+                // 发布删除事件
+                ComicEvents.PublishComicDeleted(comic.Key);
                 //SaveLibraryIndex(); // 更新索引文件
             }
         }
@@ -240,15 +246,13 @@ namespace ComicViewer
 
             if (result == MessageBoxResult.Yes)
             {
-                string path = Configs.GetFilePath();
-                string filename = $"{comic.Key}.zip";
-                string fullpath = Path.Combine(path, filename);
 
                 // 删除漫画文件
-                File.Delete(fullpath);
+                _ = ComicFileService.Instance.RemoveComicAsync(comic.Key);
                 // remove comic record
                 _ = ComicService.Instance.RemoveComicAsync(comic.Key);
-
+                // 发布删除事件
+                ComicEvents.PublishComicDeleted(comic.Key);
                 // 从UI移除
                 _viewModel.Comics.Remove(comic);
             }
@@ -262,7 +266,7 @@ namespace ComicViewer
                 var dialog = new OpenFileDialog
                 {
                     Title = "选择漫画文件",
-                    Filter = "漫画文件|*.cmc;*.zip",
+                    Filter = "漫画文件|*.cmc;*.zip;*.rar;*.7z",
                     Multiselect = true,
                     InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                     CheckFileExists = true,
@@ -336,12 +340,9 @@ namespace ComicViewer
 
                 UpdateStatus(message);
 
-                // 可选：显示完成提示
-                if (successCount > 0)
-                {
-                    MessageBox.Show(message, "添加完成",
-                        MessageBoxButton.OK, MessageBoxImage.Information);
-                }
+                // 显示完成提示
+                MessageBox.Show(message, "添加完成",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
             }
             finally
             {
@@ -386,7 +387,7 @@ namespace ComicViewer
         }
         private bool IsSupportedComicFile(string filePath)
         {
-            var extensions = new[] { ".cmc", ".zip" };
+            var extensions = new[] { ".cmc", ".zip", ".rar", ".7z" };
             var ext = Path.GetExtension(filePath).ToLower();
             return extensions.Contains(ext);
         }

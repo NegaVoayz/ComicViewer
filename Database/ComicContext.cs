@@ -13,21 +13,47 @@ namespace ComicViewer.Database
     {
         public static readonly Lazy<ComicContext> _instance = new(() => new ComicContext());
         public static ComicContext Instance => _instance.Value;
+        public DbSet<MovingFileModel> MovingFiles { get; set; }
         public DbSet<ComicData> Comics { get; set; }
         public DbSet<TagModel> Tags { get; set; }
         public DbSet<ComicTag> ComicTags { get; set; }
 
+        public ComicContext() { }
+
+        public ComicContext(DbContextOptions<ComicContext> options)
+            : base(options) { }
+
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
         {
-            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Data", "comics.db");
+            if (!optionsBuilder.IsConfigured)
+            {
+                string dbPath = Path.Combine(Configs.GetFilePath(), "comics.db");
 
-            // 确保目录存在
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+                // 确保目录存在
+                Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
 
-            optionsBuilder.UseSqlite($"Data Source={dbPath}");
+                optionsBuilder.UseSqlite($"Data Source={dbPath}");
+            }
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // 配置 MovingFileModel 静默更新表
+            modelBuilder.Entity<MovingFileModel>(entity =>
+            {
+                entity.ToTable("MovingFiles");
+
+                entity.HasKey(e => e.Key);
+
+                entity.Property(e => e.SourcePath)
+                      .HasColumnName("Src")
+                      .HasColumnType("TEXT")
+                      .IsRequired();
+
+                entity.Property(e => e.DestinationPath)
+                      .HasColumnName("Dst")
+                      .HasColumnType("TEXT")
+                      .IsRequired();
+            });
             // 配置 ComicData 主键
             modelBuilder.Entity<ComicData>(entity =>
             {
@@ -117,6 +143,13 @@ namespace ComicViewer.Database
                 .HasOne(ct => ct.Tag)
                 .WithMany(t => t.ComicTags)
                 .HasForeignKey(ct => ct.TagKey)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            // 配置 MovingFile 与 ComicData 的关系
+            modelBuilder.Entity<MovingFileModel>()
+                .HasOne(ct => ct.Comic)
+                .WithOne()
+                .HasForeignKey<MovingFileModel>(ct => ct.Key)
                 .OnDelete(DeleteBehavior.Cascade);
 
             // 可选：添加索引优化查询性能

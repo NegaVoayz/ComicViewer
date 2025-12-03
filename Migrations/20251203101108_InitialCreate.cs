@@ -19,7 +19,7 @@ namespace ComicViewer.Migrations
                     Title = table.Column<string>(type: "TEXT", nullable: true, comment: "漫画标题"),
                     CreatedTime = table.Column<DateTime>(type: "DATETIME", nullable: true, comment: "创建时间"),
                     LastAccess = table.Column<DateTime>(type: "DATETIME", nullable: true, comment: "最后访问时间"),
-                    Progress = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0, comment: "阅读进度 0-100"),
+                    Progress = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0, comment: "阅读进度"),
                     Rating = table.Column<int>(type: "INTEGER", nullable: false, defaultValue: 0, comment: "评分 0-5")
                 },
                 constraints: table =>
@@ -38,6 +38,25 @@ namespace ComicViewer.Migrations
                 constraints: table =>
                 {
                     table.PrimaryKey("PK_Tags", x => x.Key);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "MovingFiles",
+                columns: table => new
+                {
+                    Key = table.Column<string>(type: "TEXT", maxLength: 32, nullable: false),
+                    Src = table.Column<string>(type: "TEXT", nullable: false),
+                    Dst = table.Column<string>(type: "TEXT", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_MovingFiles", x => x.Key);
+                    table.ForeignKey(
+                        name: "FK_MovingFiles_Comics_Key",
+                        column: x => x.Key,
+                        principalTable: "Comics",
+                        principalColumn: "Key",
+                        onDelete: ReferentialAction.Cascade);
                 });
 
             migrationBuilder.CreateTable(
@@ -82,10 +101,13 @@ namespace ComicViewer.Migrations
                 name: "ComicTags");
 
             migrationBuilder.DropTable(
-                name: "Comics");
+                name: "MovingFiles");
 
             migrationBuilder.DropTable(
                 name: "Tags");
+
+            migrationBuilder.DropTable(
+                name: "Comics");
         }
     }
 }

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace ComicViewer.Migrations
 {
     [DbContext(typeof(ComicContext))]
-    [Migration("20251202121049_InitialCreate")]
+    [Migration("20251203101108_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -43,7 +43,7 @@ namespace ComicViewer.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(0)
                         .HasColumnName("Progress")
-                        .HasComment("阅读进度 0-100");
+                        .HasComment("阅读进度");
 
                     b.Property<int>("Rating")
                         .ValueGeneratedOnAdd()
@@ -83,6 +83,28 @@ namespace ComicViewer.Migrations
                     b.HasIndex("TagKey");
 
                     b.ToTable("ComicTags");
+                });
+
+            modelBuilder.Entity("ComicViewer.Models.MovingFileModel", b =>
+                {
+                    b.Property<string>("Key")
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Key");
+
+                    b.Property<string>("DestinationPath")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Dst");
+
+                    b.Property<string>("SourcePath")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .HasColumnName("Src");
+
+                    b.HasKey("Key");
+
+                    b.ToTable("MovingFiles", (string)null);
                 });
 
             modelBuilder.Entity("ComicViewer.Models.TagModel", b =>
@@ -125,6 +147,17 @@ namespace ComicViewer.Migrations
                     b.Navigation("Comic");
 
                     b.Navigation("Tag");
+                });
+
+            modelBuilder.Entity("ComicViewer.Models.MovingFileModel", b =>
+                {
+                    b.HasOne("ComicViewer.Models.ComicData", "Comic")
+                        .WithOne()
+                        .HasForeignKey("ComicViewer.Models.MovingFileModel", "Key")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Comic");
                 });
 
             modelBuilder.Entity("ComicViewer.Models.ComicData", b =>

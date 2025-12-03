@@ -2,12 +2,9 @@
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.Runtime.CompilerServices;
-using System.IO;
 using ComicViewer.Services;
-using System.Windows;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Windows.Media;
 
 namespace ComicViewer.Models
 {
@@ -41,7 +38,7 @@ namespace ComicViewer.Models
         [Comment("漫画标签关联")]
         public virtual ICollection<ComicTag> ComicTags { get; set; }
 
-        public ComicModel GetComicModel()
+        public ComicModel ToComicModel()
         {
             return new ComicModel
             {
@@ -114,9 +111,15 @@ namespace ComicViewer.Models
             get
             {
                 // 当访问Length时，如果为空则触发懒加载
-                if (_length == 0 && _lengthTask == null)
+                if (_length == 0)
                 {
-                    _length = CountLengthFromArchive();
+                    if(_lengthTask == null)
+                    {
+                        // 开始加载，但不等待
+                        _lengthTask = new ObservableTask<int>(ComicFileService.Instance.CountComicLengthAsync(this));
+                        _lengthTask.PropertyChanged += OnLengthTaskPropertyChanged;
+                    }
+                    return (int)1e9;// 占位，表示正在加载
                 }
                 return _length;
             }
@@ -135,7 +138,7 @@ namespace ComicViewer.Models
                 if (_coverImage == null && _coverTask == null)
                 {
                     // 开始加载，但不等待
-                    _coverTask = new ObservableTask<BitmapImage>(LoadCoverFromArchiveAsync());
+                    _coverTask = new ObservableTask<BitmapImage>(LoadCoverAsync());
                     _coverTask.PropertyChanged += OnCoverTaskPropertyChanged;
                 }
                 return _coverImage ?? LoadPlaceholderImage();
@@ -156,6 +159,7 @@ namespace ComicViewer.Models
                 return String.Join(", ",_tags.Take(3));
             }
         }
+
         private void OnCoverTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ObservableTask<BitmapImage>.Result))
@@ -163,6 +167,17 @@ namespace ComicViewer.Models
                 if (_coverTask.Result != null)
                 {
                     CoverImage = _coverTask.Result;
+                    OnPropertyChanged();
+                }
+            }
+        }
+        private void OnLengthTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ObservableTask<int>.Result))
+            {
+                if (_lengthTask.Result != 0)
+                {
+                    _length = _lengthTask.Result;
                     OnPropertyChanged();
                 }
             }
@@ -183,67 +198,13 @@ namespace ComicViewer.Models
             return true;
         }
 
-        // 为XAML绑定提供的方法
-        public Task<BitmapImage> GetLazyCoverSource()
-        {
-            return Task.Run(async () =>
-            {
-                if (_coverImage != null)
-                    return _coverImage;
-
-                await LoadCoverFromArchiveAsync();
-                return _coverImage!;
-            });
-        }
-        private int CountLengthFromArchive()
-        {
-            string filename = $"{Key}.zip";
-            string filePath = Path.Combine(Configs.GetFilePath(), filename);
-            using var archive = SharpCompress.Archives.ArchiveFactory.Open(filePath);
-            // set length
-            return archive.Entries.Count();
-        }
-
-        private async Task<BitmapImage> LoadCoverFromArchiveAsync()
+        private async Task<BitmapImage> LoadCoverAsync()
         {
             return await Task.Run(async () =>
             {
-                string filename = $"{Key}.zip";
-                string filePath = Path.Combine(Configs.GetFilePath(), filename);
-                using var archive = SharpCompress.Archives.ArchiveFactory.Open(filePath);
-                // set length
-                _length = archive.Entries.Count();
-                var imageEntry = archive.Entries
-                    .FirstOrDefault(e => e.Key != null && Path.GetFileName(e.Key)!.Equals("cover.jpg"))
-                    ?? archive.Entries.Where(e => !e.IsDirectory).OrderBy(e => e.Key).FirstOrDefault();
-
-                if (imageEntry == null)
-                {
-                    return LoadPlaceholderImage();
-                }
-
-                // 1. 从压缩包读取流
-                using var archiveStream = imageEntry.OpenEntryStream();
-
-                // 2. 复制到MemoryStream（保持存活）
-                var memoryStream = new MemoryStream();
-                await archiveStream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0; // 重要：重置位置
-
-                // 3. 同步创建BitmapImage（必须在UI线程或使用Dispatcher）
-                return await Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    var bitmap = new BitmapImage();
-                    bitmap.BeginInit();
-                    bitmap.CacheOption = BitmapCacheOption.OnLoad; // 完全加载到内存
-                    bitmap.StreamSource = memoryStream;
-                    bitmap.DecodePixelWidth = 280;
-                    bitmap.CreateOptions = BitmapCreateOptions.None;
-                    bitmap.EndInit();
-                    bitmap.Freeze(); // 允许跨线程访问
-
-                    return bitmap;
-                });
+                var images = await ComicFileService.Instance.LoadImageEntriesAsync(this);
+                var coverName = images.First();
+                return await ComicFileService.Instance.LoadImageAsync(this, coverName);
             });
         }
 
@@ -255,7 +216,6 @@ namespace ComicViewer.Models
             bitmap.BeginInit();
             bitmap.UriSource = uri;
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            //bitmap.DecodePixelWidth = 280;
             bitmap.CreateOptions = BitmapCreateOptions.None;
             bitmap.EndInit();
             bitmap.Freeze();

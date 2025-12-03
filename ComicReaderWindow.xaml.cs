@@ -1,25 +1,18 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.IO;
-using System.Linq;
-using System.Threading.Tasks;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using ComicViewer.Models;
 using ComicViewer.Services;
-using SharpCompress.Archives;
 
 namespace ComicViewer
 {
     public partial class ComicReaderWindow : Window
     {
         private readonly ComicModel _comic;
-        private readonly string path;
         private readonly List<string> _imageEntries = new();
         private int _currentPageIndex = 0;
         private bool _isLoading = false;
@@ -31,12 +24,20 @@ namespace ComicViewer
         {
             InitializeComponent();
             _comic = comic;
-            path = Path.Combine(Configs.GetFilePath(), $"{_comic.Key}.zip");
 
             Title = $"阅读器 - {_comic.Title}";
             TitleText.Text = _comic.Title;
 
             Loaded += ComicReaderWindow_Loaded;
+            
+            // 订阅删除事件
+            ComicEvents.ComicDeleted += OnComicDeleted;
+
+            this.Closed += (s, e) =>
+            {
+                // 清理事件订阅
+                ComicEvents.ComicDeleted -= OnComicDeleted;
+            };
 
             // 设置快捷键
             SetupKeyBindings();
@@ -71,7 +72,8 @@ namespace ComicViewer
             try
             {
                 // 1. 加载所有图片文件列表
-                await LoadImageEntriesAsync();
+                var imageEntries = await ComicFileService.Instance.LoadImageEntriesAsync(_comic);
+                _imageEntries.AddRange(imageEntries);
 
                 if (_imageEntries.Count == 0)
                 {
@@ -88,9 +90,6 @@ namespace ComicViewer
 
                 // 3. 加载第一页
                 await LoadCurrentPageAsync();
-
-                // 4. 预加载相邻页面
-                //_ = PreloadAdjacentPagesAsync();
             }
             catch (Exception ex)
             {
@@ -102,20 +101,6 @@ namespace ComicViewer
             {
                 LoadingIndicator.Visibility = Visibility.Collapsed;
             }
-        }
-
-        private async Task LoadImageEntriesAsync()
-        {
-            await Task.Run(() =>
-            {
-                using var archive = ArchiveFactory.Open(path);
-
-                // 获取所有图片文件并按自然顺序排序
-                _imageEntries.AddRange(archive.Entries
-                    .Where(e => IsImageFile(e.Key))
-                    .OrderBy(e => e.Key, new NaturalStringComparer())
-                    .Select(e => e.Key));
-            });
         }
 
         private int GetStartPageIndex()
@@ -164,7 +149,7 @@ namespace ComicViewer
         private async Task LoadSinglePageAsync()
         {
             var imageEntryName = _imageEntries[_currentPageIndex];
-            var image = await LoadImageFromArchiveAsync(imageEntryName);
+            var image = await ComicFileService.Instance.LoadImageAsync(_comic, imageEntryName);
 
             await Dispatcher.InvokeAsync(() =>
             {
@@ -184,13 +169,13 @@ namespace ComicViewer
             // 启动左页加载
             if (_currentPageIndex < _imageEntries.Count)
             {
-                leftTask = LoadImageFromArchiveAsync(_imageEntries[_currentPageIndex]);
+                leftTask = ComicFileService.Instance.LoadImageAsync(_comic, _imageEntries[_currentPageIndex]);
             }
 
             // 启动右页加载
             if (_currentPageIndex + 1 < _imageEntries.Count)
             {
-                rightTask = LoadImageFromArchiveAsync(_imageEntries[_currentPageIndex + 1]);
+                rightTask = ComicFileService.Instance.LoadImageAsync(_comic, _imageEntries[_currentPageIndex + 1]);
             }
 
             // 等待两个任务都完成
@@ -204,62 +189,6 @@ namespace ComicViewer
             {
                 LeftPageImage.Source = leftTask?.Result;
                 RightPageImage.Source = rightTask?.Result;
-            });
-        }
-
-        private async Task<BitmapImage> LoadImageFromArchiveAsync(string entryName)
-        {
-            return await Task.Run(async () =>
-            {
-                using var archive = ArchiveFactory.Open(path);
-                var entry = archive.Entries.First(e => e.Key == entryName);
-
-                using var stream = entry.OpenEntryStream();
-                using var memoryStream = new MemoryStream();
-                await stream.CopyToAsync(memoryStream);
-                memoryStream.Position = 0;
-
-                var bitmap = new BitmapImage();
-                bitmap.BeginInit();
-                bitmap.StreamSource = memoryStream;
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions = BitmapCreateOptions.None;
-                bitmap.EndInit();
-                bitmap.Freeze();
-
-                return bitmap;
-            });
-        }
-
-        private async Task PreloadAdjacentPagesAsync()
-        {
-            // 预加载当前页前后各2页
-            var indicesToPreload = new List<int>();
-
-            for (int i = 1; i <= 2; i++)
-            {
-                if (_currentPageIndex + i < _imageEntries.Count)
-                    indicesToPreload.Add(_currentPageIndex + i);
-                if (_currentPageIndex - i >= 0)
-                    indicesToPreload.Add(_currentPageIndex - i);
-            }
-
-            foreach (var index in indicesToPreload)
-            {
-                await LoadImageToCacheAsync(_imageEntries[index]);
-            }
-        }
-
-        private async Task LoadImageToCacheAsync(string entryName)
-        {
-            // 后台加载到缓存，不更新UI
-            _ = Task.Run(async () =>
-            {
-                try
-                {
-                    await LoadImageFromArchiveAsync(entryName);
-                }
-                catch { }
             });
         }
 
@@ -373,6 +302,19 @@ namespace ComicViewer
         }
 
         // ========== 事件处理 ==========
+        private void OnComicDeleted(string deletedComicKey)
+        {
+            // 如果是当前漫画被删除，关闭窗口
+            if (_comic.Key == deletedComicKey)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    MessageBox.Show("漫画已被删除，阅读器将关闭", "提示",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                    Close();
+                });
+            }
+        }
 
         private void Window_KeyDown(object sender, KeyEventArgs e)
         {
@@ -511,13 +453,6 @@ namespace ComicViewer
 
         // ========== 辅助方法 ==========
 
-        private bool IsImageFile(string fileName)
-        {
-            var ext = Path.GetExtension(fileName).ToLower();
-            return ext == ".jpg" || ext == ".jpeg" || ext == ".png" ||
-                   ext == ".bmp" || ext == ".gif" || ext == ".webp";
-        }
-
         private BitmapImage LoadErrorImage()
         {
             // 创建一个错误提示图片
@@ -584,18 +519,6 @@ namespace ComicViewer
                 // 触发更新事件
                 _comic.OnPropertyChanged(nameof(_comic.Progress));
             }
-        }
-    }
-
-    // 自然字符串排序比较器
-    public class NaturalStringComparer : IComparer<string>
-    {
-        [System.Runtime.InteropServices.DllImport("shlwapi.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
-        private static extern int StrCmpLogicalW(string psz1, string psz2);
-
-        public int Compare(string x, string y)
-        {
-            return StrCmpLogicalW(x, y);
         }
     }
 }

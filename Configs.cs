@@ -18,7 +18,6 @@ namespace ComicViewer
                                 .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                                 //生成配置项
                                 .Build();
-        private static readonly string filepath = configure.GetRequiredSection("comic_path").Value ?? "D:\\comics";
         //private static readonly string filepath = "E:\\comics";
         public static IConfiguration Get()
         {
@@ -26,7 +25,7 @@ namespace ComicViewer
         }
         public static string GetFilePath()
         {
-            return filepath;
+            return configure.GetRequiredSection("comic_path").Value ?? "D:\\comics";
         }
     }
 }
