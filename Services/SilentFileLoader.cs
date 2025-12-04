@@ -1,5 +1,4 @@
-﻿using ComicViewer.Database;
-using ComicViewer.Models;
+﻿using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Archives.Tar;
 using SharpCompress.Common;
@@ -24,8 +23,13 @@ namespace ComicViewer.Services
 
         private readonly object _syncLock = new object();
 
-        private static readonly Lazy<SilentFileLoader> _instance = new(() => new SilentFileLoader());
-        public static SilentFileLoader Instance => _instance.Value;
+        private readonly ComicService service;
+
+        public SilentFileLoader(ComicService service)
+        {
+            this.service = service;
+        }
+
         public async Task<bool> StopMovingTask(string Key)
         {
             if (!_runningTasks.TryGetValue(Key, out var taskInfo))
@@ -40,19 +44,28 @@ namespace ComicViewer.Services
         {
             await Task.Run(async () =>
             {
-                var movingTasks = await ComicService.Instance.GetAllMovingFilesAsync();
+                var movingTasks = await service.DataService.GetAllMovingFilesAsync();
                 foreach (var movingFile in movingTasks)
                 {
                     StartMovingTask(movingFile);
                 }
             });
         }
-        public void AddMovingTask(MovingFileModel model)
+        public async Task AddMovingTask(string Key, string sourcePath)
         {
-            var same_target_task = ComicService.Instance.GetMovingTask(model.Key);
+            var model = new MovingFileModel
+            {
+                Key = Key,
+                SourcePath = sourcePath,
+                DestinationPath = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip")
+            };
+            await AddMovingTask(model);
+        }
+        public async Task AddMovingTask(MovingFileModel model)
+        {
+            var same_target_task = service.DataService.GetMovingTask(model.Key);
             if (same_target_task == null)
             {
-                ComicService.Instance.AddMovingTask(model);
                 StartMovingTask(model);
                 return;
             }
@@ -76,7 +89,7 @@ namespace ComicViewer.Services
                 }
                 return; // no move
             }
-            _ = CancelAndStartNewTaskAsync(model.Key,
+            _ = CancelAndStartNewTaskAsync(
                 new MovingFileModel
                 {
                     Key = model.Key,
@@ -84,14 +97,13 @@ namespace ComicViewer.Services
                     SourcePath = same_target_task.SourcePath
                 });
         }
-        private async Task CancelAndStartNewTaskAsync(string key, MovingFileModel model)
+        private async Task CancelAndStartNewTaskAsync(MovingFileModel model)
         {
-            if (_runningTasks.TryGetValue(key, out var taskInfo))
+            if (_runningTasks.TryGetValue(model.Key, out var taskInfo))
             {
                 taskInfo.cts.Cancel();
                 await taskInfo.task.ConfigureAwait(false);
             }
-            ComicService.Instance.AddMovingTask(model);
             StartMovingTask(model);
         }
         private void StartMovingTask(MovingFileModel model)
@@ -102,6 +114,7 @@ namespace ComicViewer.Services
             {
                 try
                 {
+                    await service.DataService.AddMovingTask(model);
                     await MoveComicAsync(model, cts.Token);
                     // 任务成功完成
                 }
@@ -133,7 +146,6 @@ namespace ComicViewer.Services
             try
             {
                 cancellation.ThrowIfCancellationRequested();
-                ComicFileService.Instance.AddComicPath(model.Key, model.SourcePath);
                 if (srcExt == ".cmc")
                 {
                     await LoadCMCAsync(model, cancellation);
@@ -147,19 +159,14 @@ namespace ComicViewer.Services
                     await LoadCompressedAsync(model, cancellation);
                 }
                 cancellation.ThrowIfCancellationRequested();
-                ComicFileService.Instance.RemoveComicPath(model.Key);
-                await ComicService.Instance.DoneMovingTaskAsync(model);
-                return;
             }
             catch(OperationCanceledException)
             {
-                ComicFileService.Instance.ReleaseComicPath(model.Key);
                 await CleanupFileAsync(model.DestinationPath);
             }
             catch
             {
                 // 其他异常也清理
-                ComicFileService.Instance.RemoveComicPath(model.Key);
                 await CleanupFileAsync(model.DestinationPath);
                 // here we don't remove an error task from record
                 //Todo: maybe add retry
@@ -167,7 +174,10 @@ namespace ComicViewer.Services
             }
             finally
             {
+                service.FileService.RemoveComicPath(model.Key);
             }
+            await service.DataService.DoneMovingTaskAsync(model);
+            return;
         }
         private async Task LoadCompressedAsync(MovingFileModel model, CancellationToken cancellation)
         {

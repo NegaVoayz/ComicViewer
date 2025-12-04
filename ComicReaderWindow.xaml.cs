@@ -12,6 +12,7 @@ namespace ComicViewer
 {
     public partial class ComicReaderWindow : Window
     {
+        private readonly ComicService service;
         private readonly ComicModel _comic;
         private readonly List<string> _imageEntries = new();
         private int _currentPageIndex = 0;
@@ -20,9 +21,11 @@ namespace ComicViewer
 
         public int LastReadPage { get; private set; }
 
-        public ComicReaderWindow(ComicModel comic)
+        public ComicReaderWindow(ComicService service, ComicModel comic)
         {
             InitializeComponent();
+
+            this.service = service;
             _comic = comic;
 
             Title = $"阅读器 - {_comic.Title}";
@@ -72,7 +75,7 @@ namespace ComicViewer
             try
             {
                 // 1. 加载所有图片文件列表
-                var imageEntries = await ComicFileService.Instance.LoadImageEntriesAsync(_comic);
+                var imageEntries = await service.FileService.LoadImageEntriesAsync(_comic);
                 _imageEntries.AddRange(imageEntries);
 
                 if (_imageEntries.Count == 0)
@@ -149,7 +152,7 @@ namespace ComicViewer
         private async Task LoadSinglePageAsync()
         {
             var imageEntryName = _imageEntries[_currentPageIndex];
-            var image = await ComicFileService.Instance.LoadImageAsync(_comic, imageEntryName);
+            var image = await service.FileService.LoadImageAsync(_comic, imageEntryName);
 
             await Dispatcher.InvokeAsync(() =>
             {
@@ -169,13 +172,13 @@ namespace ComicViewer
             // 启动左页加载
             if (_currentPageIndex < _imageEntries.Count)
             {
-                leftTask = ComicFileService.Instance.LoadImageAsync(_comic, _imageEntries[_currentPageIndex]);
+                leftTask = service.FileService.LoadImageAsync(_comic, _imageEntries[_currentPageIndex]);
             }
 
             // 启动右页加载
             if (_currentPageIndex + 1 < _imageEntries.Count)
             {
-                rightTask = ComicFileService.Instance.LoadImageAsync(_comic, _imageEntries[_currentPageIndex + 1]);
+                rightTask = service.FileService.LoadImageAsync(_comic, _imageEntries[_currentPageIndex + 1]);
             }
 
             // 等待两个任务都完成

@@ -1,6 +1,6 @@
-﻿using ComicViewer.Database;
-using ComicViewer.Models;
+﻿using ComicViewer.Models;
 using SharpCompress.Archives.Tar;
+using SharpCompress.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -12,8 +12,26 @@ using System.Threading.Tasks;
 
 namespace ComicViewer.Services
 {
-    class ComicLoader
+    public class ComicLoader
     {
+        private readonly ComicService service;
+
+        public ComicLoader(ComicService service)
+        {
+            this.service = service;
+            _ = RecoverLoads();
+        }
+
+        private async Task RecoverLoads()
+        {
+            var movingTasks = await service.DataService.GetAllMovingFilesAsync();
+            foreach (var movingTask in movingTasks)
+            {
+                service.FileService.AddComicPath(movingTask.Key, movingTask.SourcePath);
+                await service.FileLoader.AddMovingTask(movingTask);
+            }
+        }
+
         private ComicData CreateComicDataFromFile(string filePath)
         {
             // 获取文件名（不包含路径和扩展名）
@@ -43,7 +61,7 @@ namespace ComicViewer.Services
             };
         }
 
-        public async Task<ComicModel?> AddComicAsync(string filePath)
+        public async Task<ComicData?> AddComicAsync(string filePath)
         {
             ComicData comic;
             if (Path.GetExtension(filePath) == ".cmc")
@@ -67,27 +85,25 @@ namespace ComicViewer.Services
             {
                 comic = CreateComicDataFromFile(filePath);
             }
-            if (ComicService.Instance.FindComic(comic.Key)) return null;
+            if (service.DataService.FindComic(comic.Key)) return null;
 
-            SilentFileLoader.Instance.AddMovingTask(new MovingFileModel
-            {
-                Key = comic.Key,
-                SourcePath = filePath,
-                DestinationPath = Path.Combine(Configs.GetFilePath(), $"{comic.Key}.zip"),
-            });
-            await ComicService.Instance.AddComicAsync(comic);
-            return comic.ToComicModel();
+            service.FileService.AddComicPath(comic.Key, filePath);
+            await service.DataService.AddComicAsync(comic);
+            await service.Cache.AddComic(comic);
+            service.FileLoader.AddMovingTask(comic.Key, filePath);
+            return comic;
         }
 
-        public static async Task MigrateComicLibrary(string sourcePath, string destinationPath)
+        public async Task MigrateComicLibrary(string sourcePath, string destinationPath)
         {
-            var comics = await ComicService.Instance.GetAllComicsAsync();
+            var comics = await service.DataService.GetAllComicsAsync();
             foreach (var comic in comics)
             {
                 var fileName = $"{comic.Key}.zip";
                 var sourceFilePath = Path.Combine(sourcePath, fileName);
                 var destFilePath = Path.Combine(destinationPath, fileName);
-                SilentFileLoader.Instance.AddMovingTask(new MovingFileModel
+                service.FileService.AddComicPath(comic.Key, sourceFilePath);
+                await service.FileLoader.AddMovingTask(new MovingFileModel
                 {
                     Key = comic.Key,
                     SourcePath = sourceFilePath,

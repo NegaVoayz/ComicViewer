@@ -1,33 +1,24 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using System.Security.Cryptography;
 using ComicViewer.Models;
+using SharpCompress.Common;
+using SharpCompress.Writers;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace ComicViewer.Services
 {
-    using ComicViewer.Database;
-    using Microsoft.Extensions.Configuration;
-    using SharpCompress.Common;
-    using SharpCompress.Writers;
-    using System;
-    using System.Collections.Generic;
-    using System.Diagnostics;
-    using System.Formats.Asn1;
-    using System.IO;
-    using System.IO.Compression;
-    using System.Linq;
-    using System.Text.Json;
-    using System.Text.Json.Serialization;
-    using System.Threading;
-    using System.Threading.Tasks;
-    using System.Windows.Media.Imaging;
-    using System.Xml.Linq;
 
     public class ComicExporter
     {
+        private readonly ComicService service;
+
+        public ComicExporter(ComicService service)
+        {
+            this.service = service;
+        }
+
         private ComicData CreateComicDataFromFile(string filePath)
         {
             // 获取文件名（不包含路径和扩展名）
@@ -76,7 +67,7 @@ namespace ComicViewer.Services
 
         public async Task CreateSharePackageAsync(ComicModel comic, string destinationPath)
         {
-            string sourceFilePath = ComicFileService.Instance.GetComicPath(comic);
+            string sourceFilePath = service.FileService.GetComicPath(comic);
             try
             {
                 if (Path.GetExtension(sourceFilePath) != ".zip")
@@ -84,7 +75,7 @@ namespace ComicViewer.Services
                     // nope, that's not what we want
                     return;
                 }
-                var comicData = ComicService.Instance.GetComicData(comic.Key);
+                var comicData = service.DataService.GetComicData(comic.Key);
 
                 // if just export.
                 if (Path.GetExtension(destinationPath) == ".zip")
@@ -123,7 +114,7 @@ namespace ComicViewer.Services
             }
             finally
             {
-                ComicFileService.Instance.ReleaseComicPath(comic.Key);
+                service.FileService.ReleaseComicPath(comic.Key);
             }
         }
     }

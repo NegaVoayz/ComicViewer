@@ -38,10 +38,11 @@ namespace ComicViewer.Models
         [Comment("漫画标签关联")]
         public virtual ICollection<ComicTag> ComicTags { get; set; }
 
-        public ComicModel ToComicModel()
+        public ComicModel ToComicModel(ComicService service)
         {
             return new ComicModel
             {
+                Service = service,
                 Title = Title,
                 Progress = Progress,
                 Key = Key,
@@ -72,6 +73,7 @@ namespace ComicViewer.Models
     }
     public class ComicModel : INotifyPropertyChanged
     {
+        private ComicService service;
         public string Key { get; set; }
         private string _title;
         private string[] _tags;
@@ -83,6 +85,11 @@ namespace ComicViewer.Models
         public int Rating;
         public DateTime? CreatedTime;
         public DateTime? LastAccess;
+
+        public ComicService Service
+        {
+            set => service = value;
+        }
 
         public string Title
         {
@@ -112,7 +119,7 @@ namespace ComicViewer.Models
                     if(_lengthTask == null)
                     {
                         // 开始加载，但不等待
-                        _lengthTask = new ObservableTask<int>(ComicFileService.Instance.CountComicLengthAsync(this));
+                        _lengthTask = new ObservableTask<int>(service.FileService.CountComicLengthAsync(this));
                         _lengthTask.PropertyChanged += OnLengthTaskPropertyChanged;
                     }
                     return (int)1e9;// 占位，表示正在加载
@@ -190,9 +197,9 @@ namespace ComicViewer.Models
         {
             return await Task.Run(async () =>
             {
-                var images = await ComicFileService.Instance.LoadImageEntriesAsync(this);
+                var images = await service.FileService.LoadImageEntriesAsync(this);
                 var coverName = images.First();
-                return await ComicFileService.Instance.LoadImageAsync(this, coverName);
+                return await service.FileService.LoadImageAsync(this, coverName);
             });
         }
 

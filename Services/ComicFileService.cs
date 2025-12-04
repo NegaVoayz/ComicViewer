@@ -1,6 +1,7 @@
 ﻿using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Common;
+using SharpCompress.Readers;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -36,8 +37,12 @@ namespace ComicViewer.Services
 
         private readonly object _lock = new object();
 
-        private static readonly Lazy<ComicFileService> _instance = new(() => new ComicFileService());
-        public static ComicFileService Instance => _instance.Value;
+        private readonly ComicService service;
+
+        public ComicFileService(ComicService service)
+        {
+            this.service = service;
+        }
 
         private async Task RemoveTempFile(string path)
         {
@@ -82,7 +87,8 @@ namespace ComicViewer.Services
                     _ = RemoveTempFile(entry.Path);// silent remove
                     return true;
                 }
-                comicPathDictRemove.Add(key, entry);
+                // if there's one, replace
+                comicPathDictRemove[key] = entry;
                 return true;
             }
         }
@@ -144,7 +150,7 @@ namespace ComicViewer.Services
             }
             // open
             // stop
-            var stopped = await SilentFileLoader.Instance.StopMovingTask(Key);
+            var stopped = await service.FileLoader.StopMovingTask(Key);
             if (!stopped)
             {
                 await Task.Run(() => File.Delete(fullPath));
@@ -181,24 +187,7 @@ namespace ComicViewer.Services
 
         private int CountComicLengthFromCmcStreaming(string cmcPath)
         {
-            using var cmcArchive = ArchiveFactory.Open(cmcPath);
-
-            // 找到comic.zip条目
-            var comicZipEntry = cmcArchive.Entries
-                .FirstOrDefault(e =>
-                    e.Key != null &&
-                    e.Key.Equals("comic.zip", StringComparison.OrdinalIgnoreCase));
-
-            if (comicZipEntry == null || comicZipEntry.IsDirectory)
-                throw new InvalidDataException($"CMC文件中未找到comic.zip: {cmcPath}");
-
-            // 获取zip条目的流
-            using var zipStream = comicZipEntry.OpenEntryStream();
-
-            // 从流中打开zip
-            using var zipArchive = ArchiveFactory.Open(zipStream);
-
-            return zipArchive.Entries.Count();
+            return GetComicZipInfo(cmcPath).fileCount;
         }
 
         private int CountComicLengthFromArchive(string archivePath)
@@ -237,28 +226,8 @@ namespace ComicViewer.Services
 
         private List<string> LoadImageEntriesFromCmcStreaming(string cmcPath)
         {
-            using var cmcArchive = ArchiveFactory.Open(cmcPath);
-
-            // 找到comic.zip条目
-            var comicZipEntry = cmcArchive.Entries
-                .FirstOrDefault(e =>
-                    e.Key != null &&
-                    e.Key.Equals("comic.zip", StringComparison.OrdinalIgnoreCase));
-
-            if (comicZipEntry == null || comicZipEntry.IsDirectory)
-                throw new InvalidDataException($"CMC文件中未找到comic.zip: {cmcPath}");
-
-            // 获取zip条目的流，但先不读取内容
-            using var zipStream = comicZipEntry.OpenEntryStream();
-
-            // 从流中打开zip，不需要解压到磁盘或内存
-            using var zipArchive = ArchiveFactory.Open(zipStream);
-
-            // 只读取文件名列表，不读取文件内容
-            return zipArchive.Entries
-                .Where(e => e.Key != null && IsImageFile(e.Key))
-                .OrderBy(e => e.Key!, new NaturalStringComparer())
-                .Select(e => e.Key!)
+            return GetComicZipInfo(cmcPath, true).fileNames
+                .OrderBy(e => e, new NaturalStringComparer())
                 .ToList();
         }
 
@@ -308,10 +277,8 @@ namespace ComicViewer.Services
 
         private async Task<BitmapImage> LoadImageFromCmcAsync(string cmcPath, string entryName)
         {
-            // 1. 打开.cmc文件（tar格式）
             using var cmcArchive = ArchiveFactory.Open(cmcPath);
 
-            // 2. 查找comic.zip（或其他格式的漫画包）
             var comicArchiveEntry = cmcArchive.Entries
                 .FirstOrDefault(e =>
                     e.Key != null &&
@@ -320,26 +287,22 @@ namespace ComicViewer.Services
             if (comicArchiveEntry == null)
                 throw new InvalidDataException("CMC文件中未找到漫画压缩包");
 
-            // 3. 打开漫画包的流
+            // 使用 Reader 而不是 Archive 来避免缓存整个ZIP
             using var comicStream = comicArchiveEntry.OpenEntryStream();
+            using var reader = ReaderFactory.Open(comicStream);
 
-            // 4. 直接从流中打开漫画包
-            using var comicArchive = ArchiveFactory.Open(comicStream);
+            // 查找目标图片
+            while (reader.MoveToNextEntry())
+            {
+                if (reader.Entry.Key == entryName && !reader.Entry.IsDirectory)
+                {
+                    // 流式读取图片，不缓存整个文件
+                    using var imageStream = reader.OpenEntryStream();
+                    return CreateBitmapImage(imageStream);
+                }
+            }
 
-            // 5. 查找目标图片
-            var imageEntry = comicArchive.Entries
-                .First(e => e.Key == entryName);
-
-            if (imageEntry == null || imageEntry.IsDirectory)
-                throw new FileNotFoundException($"图片不存在: {entryName}");
-
-            // 6. 读取图片数据
-            using var imageStream = imageEntry.OpenEntryStream();
-            using var memoryStream = new MemoryStream();
-            await imageStream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-
-            return CreateBitmapImage(memoryStream);
+            throw new FileNotFoundException($"图片不存在: {entryName}");
         }
 
         private async Task<BitmapImage> LoadImageFromRegularArchiveAsync(string archivePath, string entryName)
@@ -355,11 +318,11 @@ namespace ComicViewer.Services
             return CreateBitmapImage(memoryStream);
         }
 
-        private BitmapImage CreateBitmapImage(MemoryStream memoryStream)
+        private BitmapImage CreateBitmapImage(Stream stream)
         {
             var bitmap = new BitmapImage();
             bitmap.BeginInit();
-            bitmap.StreamSource = memoryStream;
+            bitmap.StreamSource = stream;
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
             bitmap.CreateOptions = BitmapCreateOptions.None;
             bitmap.EndInit();
@@ -379,6 +342,77 @@ namespace ComicViewer.Services
 
             var ext = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
             return comicExtensions.Contains(ext);
+        }
+
+        public (int fileCount, List<string> fileNames) GetComicZipInfo(string cmcPath,
+        bool includeNames = false)
+        {
+            using var tarArchive = ArchiveFactory.Open(cmcPath);
+
+            var comicZipEntry = tarArchive.Entries
+                .FirstOrDefault(e =>
+                    e.Key != null &&
+                    e.Key.EndsWith("comic.zip", StringComparison.OrdinalIgnoreCase));
+
+            if (comicZipEntry == null)
+                return (0, new List<string>());
+
+            int fileCount = 0;
+            List<string> fileNames = includeNames ? new List<string>() : null;
+
+            // 使用缓冲流优化读取性能
+            using var rawZipStream = comicZipEntry.OpenEntryStream();
+            using var bufferedStream = new BufferedStream(rawZipStream, 65536);
+
+            // 使用 ZipReader 而不是 ZipArchive
+            using var reader = ReaderFactory.Open(bufferedStream, new ReaderOptions
+            {
+                ArchiveEncoding = new ArchiveEncoding
+                {
+                    // 指定编码以防中文文件名
+                    Default = Encoding.UTF8
+                }
+            });
+
+            while (reader.MoveToNextEntry())
+            {
+                if (!reader.Entry.IsDirectory)
+                {
+                    fileCount++;
+
+                    if (includeNames)
+                    {
+                        fileNames.Add(reader.Entry.Key);
+                    }
+
+                    // 直接跳过文件内容 - 不读取实际数据
+                    // 这是避免内存问题的关键
+                    SkipEntryContent(reader);
+                }
+            }
+
+            return (fileCount, fileNames);
+        }
+
+        private void SkipEntryContent(IReader reader)
+        {
+            try
+            {
+                // 最小化内存使用的跳过方法
+                using var entryStream = reader.OpenEntryStream();
+                byte[] smallBuffer = new byte[4096];
+                int bytesRead;
+
+                do
+                {
+                    bytesRead = entryStream.Read(smallBuffer, 0, smallBuffer.Length);
+                }
+                while (bytesRead > 0);
+            }
+            catch
+            {
+                // 忽略跳过错误，继续处理下一个文件
+            }
         }
     }
 

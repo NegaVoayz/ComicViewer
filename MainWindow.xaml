@@ -149,7 +149,7 @@
                                                 <!-- 目录路径文本 -->
                                                 <TextBlock x:Name="SaveDirectoryText"
                                                            Grid.Column="0"
-                                                           Text="{Binding CurrentSaveDirectory}"
+                                                           Text="{Binding CurrentSaveDirectory.Value}"
                                                            FontSize="12"
                                                            TextWrapping="Wrap"
                                                            Foreground="#666666"/>
@@ -298,7 +298,7 @@
                             Orientation="Horizontal"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center">
-                    <!-- 紧凑搜索框 -->
+                    <!-- 搜索框 -->
                     <Border Width="280" Height="32"
                             Background="#F5F5F5"
                             CornerRadius="16">

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ComicViewer.Services.ComicViewer.Core;
+using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
@@ -9,33 +10,21 @@ using System.Threading.Tasks;
 
 namespace ComicViewer.Models
 {
-    public class ComicViewModel : INotifyPropertyChanged
+    public class ComicViewModel
     {
-        public ObservableCollection<ComicModel> Comics { get; } = new();
-        public ObservableCollection<TagModel> UnselectedTags { get; } = new();
-        public ObservableCollection<TagModel> SelectedTags { get; } = new();
+        public ReadOnlyObservableCollection<ComicModel> Comics { get; }
+        public ReadOnlyObservableCollection<TagModel> UnselectedTags { get; }
+        public ReadOnlyObservableCollection<TagModel> SelectedTags { get; }
+        public ObservableObject<string> CurrentSaveDirectory { get; } = Configs.GetFilePath();
 
-        public bool HasSelectedTags => SelectedTags.Count > 0;
-
-        private string _currentSaveDirectory;
-
-        public string CurrentSaveDirectory
+        public ComicViewModel(
+            ReadOnlyObservableCollection<ComicModel> comics,
+            ReadOnlyObservableCollection<TagModel> unselectedTags,
+            ReadOnlyObservableCollection<TagModel> selectedTags)
         {
-            get => _currentSaveDirectory;
-            set
-            {
-                if (_currentSaveDirectory != value)
-                {
-                    _currentSaveDirectory = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public event PropertyChangedEventHandler PropertyChanged;
-        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            Comics = comics;
+            UnselectedTags = unselectedTags;
+            SelectedTags = selectedTags;
         }
     }
 }

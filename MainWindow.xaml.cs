@@ -8,7 +8,6 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
-using ComicViewer.Database;
 using ComicViewer.Models;
 using ComicViewer.Services;
 using Microsoft.Win32;
@@ -20,9 +19,8 @@ namespace ComicViewer
     /// </summary>
     public partial class MainWindow : Window
     {
+        private readonly ComicService service;
         private ComicViewModel _viewModel;
-        private readonly ComicLoader _loader;
-        private readonly ComicExporter _exporter;
         private bool _isLoading;
         private int _visibleStartIndex = 0;
         private int _visibleEndIndex = 50; // 初始加载50个
@@ -32,37 +30,18 @@ namespace ComicViewer
         {
             InitializeComponent();
 
-            _viewModel = new ComicViewModel();
+            service = new();
+            _viewModel = service.Cache.ViewModel;
             DataContext = _viewModel;
-
-            _loader = new ComicLoader();
-            _exporter = new ComicExporter();
 
             InitializeSaveDirectory();
 
             // 初始加载漫画
-            Loaded += async (s, e) => await InitializeComicsAsync();
+            Loaded += async (s, e) => await service.Cache.InitializeAsync();
 
             AllowDrop = true;
             DragEnter += MainWindow_DragEnter;
             Drop += MainWindow_Drop;
-        }
-
-        private async Task InitializeComicsAsync()
-        {
-            var taskMoves = SilentFileLoader.Instance.RecoverMovingTask();
-            var comics = await ComicService.Instance.GetAllComicsAsync();
-            foreach (var comic in comics)
-            {
-                _viewModel.Comics.Add(comic);
-            }
-            var tags = await ComicService.Instance.GetAllTagsAsync();
-            foreach (var tag in tags)
-            {
-                _viewModel.UnselectedTags.Add(tag);
-            }
-
-            await taskMoves;
         }
 
         private void InitializeSaveDirectory()
@@ -70,8 +49,8 @@ namespace ComicViewer
             try
             {
                 // 从配置文件或默认位置获取保存目录
-                _viewModel.CurrentSaveDirectory = Configs.GetFilePath();
-                UpdateSaveDirectoryDisplay();
+                _viewModel.CurrentSaveDirectory.Value = Configs.GetFilePath();
+                //UpdateSaveDirectoryDisplay();
 
                 // 异步计算存储使用情况
                 _ = CalculateStorageUsageAsync();
@@ -88,11 +67,11 @@ namespace ComicViewer
             if (SaveDirectoryText != null)
             {
                 // 显示缩短的路径（如果需要）
-                if (_viewModel.CurrentSaveDirectory.Length > 50)
+                if (_viewModel.CurrentSaveDirectory.Value.Length > 50)
                 {
-                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory.Substring(0, 20) +
+                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory.Value.Substring(0, 20) +
                                             "..." +
-                                            _viewModel.CurrentSaveDirectory.Substring(_viewModel.CurrentSaveDirectory.Length - 25);
+                                            _viewModel.CurrentSaveDirectory.Value.Substring(_viewModel.CurrentSaveDirectory.Value.Length - 25);
                     SaveDirectoryText.ToolTip = _viewModel.CurrentSaveDirectory;
                 }
                 else
@@ -177,43 +156,17 @@ namespace ComicViewer
 
         private void SortComics(string sortMethod)
         {
-            var comics = _viewModel.Comics.ToList(); // 复制列表
-
-            switch (sortMethod)
+            Order newOrder = sortMethod switch
             {
-                case "最新添加":
-                    comics = comics.OrderByDescending(c => c.CreatedTime).ToList();
-                    break;
+                "最新添加" => Order.CreatedTime,
+                "最近阅读" => Order.LastAccess,
+                "标题 A-Z" => Order.Title,
+                "标题 Z-A" => Order.TitleInverse,
+                "评分最高" => Order.Rating,
+                _ => Order.CreatedTime
+            };
 
-                case "最近阅读":
-                    comics = comics.OrderByDescending(c => c.LastAccess).ToList();
-                    break;
-
-                case "标题 A-Z":
-                    comics = comics.OrderBy(c => c.Title, StringComparer.OrdinalIgnoreCase).ToList();
-                    break;
-
-                case "标题 Z-A":
-                    comics = comics.OrderByDescending(c => c.Title, StringComparer.OrdinalIgnoreCase).ToList();
-                    break;
-
-                case "评分最高":
-                    comics = comics.OrderByDescending(c => c.Rating)
-                                   .ThenBy(c => c.Title, StringComparer.OrdinalIgnoreCase)
-                                   .ToList();
-                    break;
-
-                default:
-                    comics = comics.OrderByDescending(c => c.CreatedTime).ToList();
-                    break;
-            }
-
-            // 更新集合（注意：这会重置UI）
-            _viewModel.Comics.Clear();
-            foreach(var comic in comics)
-            {
-                _viewModel.Comics.Add(comic);
-            }
+            service.Cache.SetOrder(newOrder);
         }
 
         private void ComicCard_Click(object sender, MouseButtonEventArgs e)
@@ -231,7 +184,7 @@ namespace ComicViewer
                 UpdateStatus($"正在打开: {comic.Title}");
 
                 // 创建并显示阅读器窗口（非模态）
-                var readerWindow = new ComicReaderWindow(comic)
+                var readerWindow = new ComicReaderWindow(service, comic)
                 {
                     Owner = this,
                     WindowStartupLocation = WindowStartupLocation.CenterOwner
@@ -263,12 +216,12 @@ namespace ComicViewer
             try
             {
                 // 更新到数据库或元数据文件
-                var comicData = ComicService.Instance.GetComicData(comic.Key);
+                var comicData = service.DataService.GetComicData(comic.Key);
                 if (comicData != null)
                 {
                     comicData.Progress = comic.Progress;
                     comicData.LastAccess = comic.LastAccess;
-                    await ComicService.Instance.UpdateComicAsync(comicData);
+                    await service.DataService.UpdateComicAsync(comicData);
                 }
             }
             catch (Exception ex)
@@ -299,7 +252,7 @@ namespace ComicViewer
 
             if (saveDialog.ShowDialog() == true)
             {
-                await _exporter.CreateSharePackageAsync(comic, saveDialog.FileName);
+                await service.Exporter.CreateSharePackageAsync(comic, saveDialog.FileName);
                 MessageBox.Show("分享包创建成功！");
             }
         }
@@ -313,7 +266,7 @@ namespace ComicViewer
             System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{fullPath}\"");
         }
 
-        private void RemoveComic(ComicModel comic)
+        private async Task RemoveComic(ComicModel comic)
         {
             // 从库中移除（不删除文件）
             // 只是从内存索引中删除，文件还在磁盘上
@@ -324,7 +277,7 @@ namespace ComicViewer
 
             if (result == MessageBoxResult.Yes)
             {
-                _viewModel.Comics.Remove(comic);
+                await service.Cache.RemoveComic(comic.Key);
                 // 发布删除事件
                 ComicEvents.PublishComicDeleted(comic.Key);
                 //SaveLibraryIndex(); // 更新索引文件
@@ -344,13 +297,13 @@ namespace ComicViewer
             {
 
                 // 删除漫画文件
-                _ = ComicFileService.Instance.RemoveComicAsync(comic.Key);
+                _ = service.FileService.RemoveComicAsync(comic.Key);
                 // remove comic record
-                _ = ComicService.Instance.RemoveComicAsync(comic.Key);
+                _ = service.FileService.RemoveComicAsync(comic.Key);
                 // 发布删除事件
                 ComicEvents.PublishComicDeleted(comic.Key);
                 // 从UI移除
-                _viewModel.Comics.Remove(comic);
+                _ = service.Cache.RemoveComic(comic.Key);
             }
         }
 
@@ -409,13 +362,11 @@ namespace ComicViewer
                         UpdateStatus($"正在处理 ({i + 1}/{filePaths.Length}): {Path.GetFileName(filePath)}");
 
                         // 调用加载器添加漫画
-                        var result = await _loader.AddComicAsync(filePath);
+                        var result = await service.Loader.AddComicAsync(filePath);
 
                         if (result != null)
                         {
                             successCount++;
-                            // 更新UI
-                            _viewModel.Comics.Add(result);
                         }
                         else
                         {
@@ -492,7 +443,7 @@ namespace ComicViewer
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                OpenComic(comic);
+                await Task.Run(()=>OpenComic(comic));
             }
         }
 
@@ -500,7 +451,7 @@ namespace ComicViewer
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                EditComicTags(comic);
+                await Task.Run(()=>EditComicTags(comic));
             }
         }
 
@@ -508,49 +459,51 @@ namespace ComicViewer
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                ShareComic(comic);
+                await ShareComic(comic);
             }
         }
         private async void RemoveComicMenuItem_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                RemoveComic(comic);
+                await RemoveComic(comic);
             }
         }
         private async void DeleteComicMenuItem_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                DeleteComicFile(comic);
+                await Task.Run(()=>DeleteComicFile(comic));
             }
         }
 
-
-
         private async void ClearFilters_Click(object sender, RoutedEventArgs e) 
         {
-            foreach(var tag in _viewModel.SelectedTags)
-                _viewModel.UnselectedTags.Add(tag);
-            _viewModel.SelectedTags.Clear();
+            service.Cache.ClearSelectedTags();
         }
         private async void TagCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
             {
-                _viewModel.SelectedTags.Add(tag);
-                _viewModel.UnselectedTags.Remove(tag);
+                service.Cache.SelectTag(tag.Key);
             }
         }
         private async void TagCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
             if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
             {
-                _viewModel.SelectedTags.Remove(tag);
-                _viewModel.UnselectedTags.Add(tag);
+                service.Cache.DeselectTag(tag.Key);
             }
         }
-        private async void OnTagSearchChanged(object sender, TextChangedEventArgs e) { }
+
+        
+        private async void OnTagSearchChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is TextBox MainSearchBox)
+            {
+                service.Cache.SetSearchName(MainSearchBox.Text);
+            }
+        }
 
         // 滚轮加速
         private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
@@ -621,9 +574,6 @@ namespace ComicViewer
 
         private void OnChangeSaveDirectoryRequested()
         {
-            // TODO: 实现选择新目录的逻辑
-
-            // 示例代码：
             var dialog = new OpenFolderDialog
             {
                 Title = "选择漫画保存目录",
@@ -643,16 +593,14 @@ namespace ComicViewer
                 if (ValidateNewDirectory(newPath))
                 {
                     // 更新配置
-                    var oldPath = _viewModel.CurrentSaveDirectory;
+                    var oldPath = _viewModel.CurrentSaveDirectory.Value;
                     Configs.SetFilePath(newPath);
-                    _viewModel.CurrentSaveDirectory = newPath;
-
-                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory;
+                    _viewModel.CurrentSaveDirectory.Value = newPath;
 
                     //_ = CalculateStorageUsageAsync();
 
                     // 重新加载漫画库
-                    _ = ComicLoader.MigrateComicLibrary(oldPath, newPath);
+                    _ = service.Loader.MigrateComicLibrary(oldPath, newPath);
                     
                     ShowStatusMessage($"保存目录已更改为: {newPath}", 3000);
                 }

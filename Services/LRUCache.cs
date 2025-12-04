@@ -8,29 +8,36 @@ namespace ComicViewer.Services
 {
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Xml.Linq;
 
     public class LRUCache<TKey, TValue>
     {
         private readonly int _capacity;
-        private readonly ConcurrentDictionary<TKey, TValue> _cache;
-        private readonly ConcurrentQueue<TKey> _accessQueue;
+        private readonly Dictionary<TKey, LinkedListNode<KeyValuePair<TKey,TValue>>> _cache;
+        private readonly LinkedList<KeyValuePair<TKey, TValue>> _accessQueue;
         private readonly object _lock = new object();
 
         public LRUCache(int capacity)
         {
             _capacity = capacity;
-            _cache = new ConcurrentDictionary<TKey, TValue>();
-            _accessQueue = new ConcurrentQueue<TKey>();
+            _cache = new();
+            _accessQueue = new();
         }
 
         public bool TryGet(TKey key, out TValue value)
         {
-            if (_cache.TryGetValue(key, out value))
+            if (_cache.TryGetValue(key, out var node))
             {
-                // 记录访问
-                RecordAccess(key);
+                lock (_lock)
+                {
+                    // 记录访问
+                    value = node.Value.Value;
+                    _accessQueue.Remove(node);
+                    _accessQueue.AddLast(node);
+                }
                 return true;
             }
+            value = default;
             return false;
         }
 
@@ -38,29 +45,47 @@ namespace ComicViewer.Services
         {
             lock (_lock)
             {
+                if (_cache.TryGetValue(key, out var existingNode))
+                {
+                    // 更新现有节点的值并记录访问
+                    existingNode.Value = new KeyValuePair<TKey, TValue>(key, value);
+                    _accessQueue.Remove(existingNode);
+                    _accessQueue.AddLast(existingNode);
+                    return;
+                }
                 if (_cache.Count >= _capacity)
                 {
                     // 尝试移除最久未使用的
-                    if (_accessQueue.TryDequeue(out var oldestKey))
-                    {
-                        _cache.TryRemove(oldestKey, out _);
-                    }
+                    _cache.Remove(_accessQueue.First.Value.Key, out _);
+                    _accessQueue.RemoveFirst();
                 }
 
-                _cache[key] = value;
-                RecordAccess(key);
+                var newNode = new LinkedListNode<KeyValuePair<TKey, TValue>>(new KeyValuePair<TKey, TValue>(key, value));
+                _accessQueue.AddLast(newNode);
+                _cache[key] = newNode;
+            }
+        }
+
+        public void Remove(TKey key)
+        {
+            lock (_lock)
+            {
+                if (_cache.TryGetValue(key, out var existingNode))
+                {
+                    _cache.Remove(key);
+                    _accessQueue.Remove(existingNode);
+                    return;
+                }
             }
         }
 
         public void Clear()
         {
-            _cache.Clear();
-        }
-
-        private void RecordAccess(TKey key)
-        {
-            // 简单的访问记录，实际使用可能需要更复杂的逻辑
-            _accessQueue.Enqueue(key);
+            lock (_lock)
+            {
+                _cache.Clear();
+                _accessQueue.Clear();
+            }
         }
     }
 }
