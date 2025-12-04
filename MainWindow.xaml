@@ -304,7 +304,7 @@
                             CornerRadius="16">
                         <Grid>
                             <TextBox x:Name="MainSearchBox"
-                                     TextChanged="OnTagSearchChanged">
+                                     TextChanged="OnNameSearchChanged">
                                 <TextBox.Resources>
                                     <!-- 水印效果 -->
                                     <VisualBrush x:Key="PlaceholderBrush" 

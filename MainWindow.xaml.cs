@@ -34,6 +34,9 @@ namespace ComicViewer
             _viewModel = service.Cache.ViewModel;
             DataContext = _viewModel;
 
+            SearchNameDebouncer = new(500, service.Cache.SetSearchName);
+            SearchTagDebouncer = new(500, service.Cache.SetSearchTagName);
+
             InitializeSaveDirectory();
 
             // 初始加载漫画
@@ -181,7 +184,7 @@ namespace ComicViewer
         {
             try
             {
-                UpdateStatus($"正在打开: {comic.Title}");
+                ShowStatusMessage($"正在打开: {comic.Title}", 1000);
 
                 // 创建并显示阅读器窗口（非模态）
                 var readerWindow = new ComicReaderWindow(service, comic)
@@ -195,7 +198,7 @@ namespace ComicViewer
                 {
                     if (readerWindow.LastReadPage > 0)
                     {
-                        UpdateStatus($"已阅读到第 {readerWindow.LastReadPage} 页");
+                        ShowStatusMessage($"已阅读到第 {readerWindow.LastReadPage} 页", 1000);
                         await SaveComicProgressAsync(comic);
                     }
                 };
@@ -207,7 +210,7 @@ namespace ComicViewer
             {
                 MessageBox.Show($"打开漫画失败:\n{ex.Message}", "错误",
                     MessageBoxButton.OK, MessageBoxImage.Error);
-                UpdateStatus($"打开失败: {comic.Title}");
+                ShowStatusMessage($"打开失败: {comic.Title}", 2000);
             }
         }
 
@@ -253,7 +256,6 @@ namespace ComicViewer
             if (saveDialog.ShowDialog() == true)
             {
                 await service.Exporter.CreateSharePackageAsync(comic, saveDialog.FileName);
-                MessageBox.Show("分享包创建成功！");
             }
         }
          
@@ -299,7 +301,7 @@ namespace ComicViewer
                 // 删除漫画文件
                 _ = service.FileService.RemoveComicAsync(comic.Key);
                 // remove comic record
-                _ = service.FileService.RemoveComicAsync(comic.Key);
+                _ = service.DataService.RemoveComicAsync(comic.Key);
                 // 发布删除事件
                 ComicEvents.PublishComicDeleted(comic.Key);
                 // 从UI移除
@@ -385,7 +387,7 @@ namespace ComicViewer
                 if (skipCount > 0) message += $", {skipCount} 个已跳过";
                 if (errorCount > 0) message += $", {errorCount} 个失败";
 
-                UpdateStatus(message);
+                ShowStatusMessage(message, 2000);
 
                 // 显示完成提示
                 MessageBox.Show(message, "添加完成",
@@ -439,11 +441,11 @@ namespace ComicViewer
             return extensions.Contains(ext);
         }
 
-        private async void OpenComicMenuItem_Click(object sender, RoutedEventArgs e)
+        private void OpenComicMenuItem_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                await Task.Run(()=>OpenComic(comic));
+                OpenComic(comic);
             }
         }
 
@@ -477,18 +479,18 @@ namespace ComicViewer
             }
         }
 
-        private async void ClearFilters_Click(object sender, RoutedEventArgs e) 
+        private void ClearFilters_Click(object sender, RoutedEventArgs e) 
         {
             service.Cache.ClearSelectedTags();
         }
-        private async void TagCheckBox_Checked(object sender, RoutedEventArgs e)
+        private void TagCheckBox_Checked(object sender, RoutedEventArgs e)
         {
             if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
             {
                 service.Cache.SelectTag(tag.Key);
             }
         }
-        private async void TagCheckBox_Unchecked(object sender, RoutedEventArgs e)
+        private void TagCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
             if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
             {
@@ -496,12 +498,21 @@ namespace ComicViewer
             }
         }
 
-        
-        private async void OnTagSearchChanged(object sender, TextChangedEventArgs e)
+        Debouncer<string> SearchNameDebouncer;
+        private async void OnNameSearchChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox MainSearchBox)
             {
-                service.Cache.SetSearchName(MainSearchBox.Text);
+                SearchNameDebouncer.Debounce(MainSearchBox.Text);
+            }
+        }
+
+        Debouncer<string> SearchTagDebouncer;
+        private async void OnTagSearchChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is TextBox TagSearchBox)
+            {
+                SearchTagDebouncer.Debounce(TagSearchBox.Text);
             }
         }
 

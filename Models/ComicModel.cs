@@ -60,7 +60,7 @@ namespace ComicViewer.Models
                 Version = "1.0",
                 Title = Title,
                 // 从 ComicTags 提取标签名称
-                Tags = ComicTags?.Select(ct => ct.Tag.Name).ToArray() ?? Array.Empty<string>(),
+                Tags = ComicTags?.Select(ct => ct.Tag.Name).ToList() ?? new List<string>(),
                 System = new SystemInfo
                 {
                     CreatedTime = CreatedTime,
@@ -122,11 +122,11 @@ namespace ComicViewer.Models
                         _lengthTask = new ObservableTask<int>(service.FileService.CountComicLengthAsync(this));
                         _lengthTask.PropertyChanged += OnLengthTaskPropertyChanged;
                     }
-                    return (int)1e9;// 占位，表示正在加载
+                    return 0;// 占位，表示正在加载
                 }
                 return _length;
             }
-            private set => SetField(ref _length, value);
+            private set => SetField(ref _length, value); 
         }
 
         public BitmapImage CoverImage
@@ -172,7 +172,7 @@ namespace ComicViewer.Models
             {
                 if (_lengthTask.Result != 0)
                 {
-                    _length = _lengthTask.Result;
+                    Length = _lengthTask.Result;
                     OnPropertyChanged();
                 }
             }

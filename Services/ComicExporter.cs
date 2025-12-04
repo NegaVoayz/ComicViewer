@@ -6,6 +6,7 @@ using SharpCompress.Writers;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Windows;
 
 namespace ComicViewer.Services
 {
@@ -67,7 +68,7 @@ namespace ComicViewer.Services
 
         public async Task CreateSharePackageAsync(ComicModel comic, string destinationPath)
         {
-            string sourceFilePath = service.FileService.GetComicPath(comic);
+            string sourceFilePath = service.FileService.GetComicPath(comic.Key);
             try
             {
                 if (Path.GetExtension(sourceFilePath) != ".zip")
@@ -84,19 +85,15 @@ namespace ComicViewer.Services
                     return;
                 }
 
-                using var tarStream = File.Create(destinationPath);
-                using var tarWriter = WriterFactory.Open(tarStream, ArchiveType.Tar, new WriterOptions(CompressionType.None));
-
-                // 1. 添加漫画文件
-                var copyComic = Task.Run(() =>
+                await Task.Run(async () =>
                 {
-                    // 使用AddEntry方法添加文件
+                    using var tarStream = File.Create(destinationPath);
+                    using var tarWriter = WriterFactory.Open(tarStream, ArchiveType.Tar, new WriterOptions(CompressionType.None));
+
+                    // 1. 添加漫画文件
                     tarWriter.Write("comic.zip", sourceFilePath);
-                });
 
-                // 2. 添加metadata.json
-                var copyMetaData = Task.Run(async () =>
-                {
+                    // 2. 添加metadata.json
                     var metadata = comicData.ToComicMetadata();
                     var metadataJson = JsonSerializer.Serialize(metadata);
                     var metadataBytes = Encoding.UTF8.GetBytes(metadataJson);
@@ -104,17 +101,16 @@ namespace ComicViewer.Services
                     // 使用MemoryStream添加内容
                     using var memoryStream = new MemoryStream(metadataBytes);
                     tarWriter.Write("metadata.json", memoryStream, DateTime.Now);
+
+                    // 确保写入完成
+                    tarWriter.Dispose();
+                    await tarStream.FlushAsync();
                 });
-
-                await Task.WhenAll(copyComic, copyMetaData);
-
-                // 确保写入完成
-                tarWriter.Dispose();
-                await tarStream.FlushAsync();
+                MessageBox.Show("分享包创建成功！");
             }
             finally
             {
-                service.FileService.ReleaseComicPath(comic.Key);
+                service.FileService.ReleaseComicPath(comic.Key, sourceFilePath);
             }
         }
     }
@@ -126,7 +122,7 @@ namespace ComicViewer.Services
         [JsonPropertyName("title")]
         public string Title { get; set; }
         [JsonPropertyName("tags")]
-        public string[] Tags { get; set; }
+        public List<string> Tags { get; set; }
         [JsonPropertyName("system")]
         public SystemInfo System { get; set; }
         public ComicData ToComicData()
@@ -143,11 +139,17 @@ namespace ComicViewer.Services
         }
         public List<TagModel> GetTags()
         {
-            return Tags.Select(tag => new TagModel
-            {
-                Key = ComicExporter.CalculateMD5(tag),
-                Name = tag
-            }).ToList();
+            return Tags.Select(t =>
+                new TagModel
+                {
+                    Key = ComicExporter.CalculateMD5(t),
+                    Name = t,
+                    Count = 1
+                }).ToList();
+        }
+        public List<string> GetTagKeys()
+        {
+            return Tags.Select(t => ComicExporter.CalculateMD5(t)).ToList();
         }
     }
 

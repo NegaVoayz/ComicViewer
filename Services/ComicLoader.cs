@@ -27,7 +27,7 @@ namespace ComicViewer.Services
             var movingTasks = await service.DataService.GetAllMovingFilesAsync();
             foreach (var movingTask in movingTasks)
             {
-                service.FileService.AddComicPath(movingTask.Key, movingTask.SourcePath);
+                service.FileService.AddComicTempPath(movingTask.Key, movingTask.SourcePath);
                 await service.FileLoader.AddMovingTask(movingTask);
             }
         }
@@ -64,6 +64,7 @@ namespace ComicViewer.Services
         public async Task<ComicData?> AddComicAsync(string filePath)
         {
             ComicData comic;
+            ComicMetadata? comicMetadata = null;
             if (Path.GetExtension(filePath) == ".cmc")
             {
                 using var archive = TarArchive.Open(filePath);
@@ -76,10 +77,11 @@ namespace ComicViewer.Services
                 using var reader = new StreamReader(entryStream);
                 var data = await reader.ReadToEndAsync();
 
-                var comicMetadata = JsonSerializer.Deserialize<ComicMetadata>(data);
+                comicMetadata = JsonSerializer.Deserialize<ComicMetadata>(data);
                 if (comicMetadata == null) return null;
 
                 comic = comicMetadata.ToComicData();
+                await service.DataService.AddTagsAsync(comicMetadata.Tags);
             }
             else
             {
@@ -87,10 +89,14 @@ namespace ComicViewer.Services
             }
             if (service.DataService.FindComic(comic.Key)) return null;
 
-            service.FileService.AddComicPath(comic.Key, filePath);
+            service.FileService.AddComicTempPath(comic.Key, filePath);
             await service.DataService.AddComicAsync(comic);
+            if (comicMetadata != null)
+            {
+                await service.DataService.AddTagsToComicAsync(comic.Key, comicMetadata.GetTagKeys());
+            }
             await service.Cache.AddComic(comic);
-            service.FileLoader.AddMovingTask(comic.Key, filePath);
+            await service.FileLoader.AddMovingTask(comic.Key, filePath);
             return comic;
         }
 
@@ -102,7 +108,7 @@ namespace ComicViewer.Services
                 var fileName = $"{comic.Key}.zip";
                 var sourceFilePath = Path.Combine(sourcePath, fileName);
                 var destFilePath = Path.Combine(destinationPath, fileName);
-                service.FileService.AddComicPath(comic.Key, sourceFilePath);
+                service.FileService.AddComicTempPath(comic.Key, sourceFilePath);
                 await service.FileLoader.AddMovingTask(new MovingFileModel
                 {
                     Key = comic.Key,

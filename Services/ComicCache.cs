@@ -31,12 +31,12 @@ namespace ComicViewer.Services
         // DynamicData 数据源
         private readonly SourceList<ComicData> _comicsSource = new();
         private readonly SourceList<TagModel> _tagsSource = new();
+        private readonly SourceList<TagModel> _selectedTagsSet = new();
 
         // 可观察的状态
         private readonly BehaviorSubject<string> _searchNameSubject = new(string.Empty);
         private readonly BehaviorSubject<string> _searchTagNameSubject = new(string.Empty);
         private readonly BehaviorSubject<Order> _orderSubject = new(Order.CreatedTime);
-        private readonly BehaviorSubject<HashSet<string>> _selectedTagKeysSubject = new(new());
 
         // ViewModel 绑定的集合
         private readonly ReadOnlyObservableCollection<ComicModel> _comics;
@@ -63,15 +63,16 @@ namespace ComicViewer.Services
             // 初始化数据流
 
             // 组合所有过滤条件
-            var combinedFilter = Observable.CombineLatest(
-                _selectedTagKeysSubject.Select(CreateTagFilter),
-                _searchNameSubject.Select(CreateNameFilter),
-                (tagFilter, nameFilter) => new Func<ComicData, bool>(c => tagFilter(c) && nameFilter(c))
-            );
+            //var combinedFilter = Observable.CombineLatest(
+            //    _selectedTagKeysSubject.Select(CreateTagFilter),
+            //    _searchNameSubject.Select(CreateNameFilter),
+            //    (tagFilter, nameFilter) => new Func<ComicData, bool>(c => tagFilter(c) && nameFilter(c))
+            //);
 
             // 设置漫画数据流
             _comicsSource.Connect()
-                .Filter(combinedFilter)
+                //.Filter(combinedFilter)
+                .Filter(_searchNameSubject.Select(CreateNameFilter))
                 .Transform(data => ConvertComicDataToModel(data))
                 .Sort(_orderSubject.Select(CreateComparer))
                 .ObserveOn(RxApp.MainThreadScheduler)
@@ -81,13 +82,12 @@ namespace ComicViewer.Services
             // 未选中的标签（按名称过滤）
             _tagsSource.Connect()
                 .Filter(_searchTagNameSubject.Select(CreateTagNameFilter))
-                .Filter(tag => !_selectedTagKeysSubject.Value.Contains(tag.Key))
+                .Except(_selectedTagsSet.Connect())
                 .Bind(out _unselectedTags)
                 .Subscribe();
 
             // 已选中的标签
-            _tagsSource.Connect()
-                .Filter(tag => _selectedTagKeysSubject.Value.Contains(tag.Key))
+            _selectedTagsSet.Connect()
                 .Bind(out _selectedTags)
                 .Subscribe();
 
@@ -123,18 +123,19 @@ namespace ComicViewer.Services
             });
         }
 
-        private Func<ComicData, bool> CreateTagFilter(HashSet<string> selectedTagKeys)
-        {
-            return comic =>
-            {
-                if (!selectedTagKeys.Any()) return true;
+        // done by database
+        //private Func<ComicData, bool> CreateTagFilter(HashSet<string> selectedTagKeys)
+        //{
+        //    return comic =>
+        //    {
+        //        if (!selectedTagKeys.Any()) return true;
 
-                var comicTagKeys = new HashSet<string>(
-                    comic.ComicTags?.Select(ct => ct.Tag.Key) ?? Enumerable.Empty<string>()
-                );
-                return selectedTagKeys.IsSubsetOf(comicTagKeys);
-            };
-        }
+        //        var comicTagKeys = new HashSet<string>(
+        //            comic.ComicTags?.Select(ct => ct.Tag.Key) ?? Enumerable.Empty<string>()
+        //        );
+        //        return selectedTagKeys.IsSubsetOf(comicTagKeys);
+        //    };
+        //}
 
         private Func<ComicData, bool> CreateNameFilter(string searchName)
         {
@@ -178,13 +179,17 @@ namespace ComicViewer.Services
         public async Task AddComic(ComicData comic)
         {
             // 异步检查标签（如果需要数据库查询）
-            if (_selectedTagKeysSubject.Value.Any())
+            if (_selectedTagsSet.Items.Any())
             {
                 var comicTagKeys = new HashSet<string>(
                     comic.ComicTags?.Select(ct => ct.Tag.Key) ?? Enumerable.Empty<string>()
                 );
 
-                if (!_selectedTagKeysSubject.Value.IsSubsetOf(comicTagKeys))
+                var selectedKeys = new HashSet<string>(
+                    _selectedTagsSet.Items.Select(ct => ct.Key) ?? Enumerable.Empty<string>()
+                );
+
+                if (!selectedKeys.IsSubsetOf(comicTagKeys))
                 {
                     return;
                 }
@@ -240,35 +245,21 @@ namespace ComicViewer.Services
             _searchTagNameSubject.OnNext(searchTagName);
         }
 
-        public void SetSelectedTagKeys(IEnumerable<string> tagKeys)
-        {
-            var newSet = new HashSet<string>(tagKeys);
-            _selectedTagKeysSubject.OnNext(newSet);
-        }
-
         public void SelectTag(string tagKey)
         {
-            var current = new HashSet<string>(_selectedTagKeysSubject.Value);
-            if (current.Add(tagKey)) // 只有成功添加时才更新
-            {
-                _selectedTagKeysSubject.OnNext(current);
-            }
+            _selectedTagsSet.Add(_tagsSource.Items.First(t => t.Key == tagKey));
+            _ = RefreshComicsByTagsAsync();
         }
 
         public void DeselectTag(string tagKey)
         {
-            var current = new HashSet<string>(_selectedTagKeysSubject.Value);
-            if (current.Remove(tagKey)) // 只有成功移除时才更新
-            {
-                _selectedTagKeysSubject.OnNext(current);
-            }
+            _selectedTagsSet.Remove(_selectedTagsSet.Items.First(t => t.Key == tagKey));
+            _ = RefreshComicsByTagsAsync();
         }
         public void ClearSelectedTags()
         {
-            if (_selectedTagKeysSubject.Value.Any())
-            {
-                _selectedTagKeysSubject.OnNext(new HashSet<string>());
-            }
+            _selectedTagsSet.Clear();
+            _ = RefreshComicsByTagsAsync();
         }
 
         #endregion
@@ -296,7 +287,7 @@ namespace ComicViewer.Services
 
         public async Task RefreshComicsByTagsAsync()
         {
-            var selectedTags = _selectedTagKeysSubject.Value.ToList();
+            var selectedTags = _selectedTagsSet.Items.Select(e => e.Key).ToList();
             if (!selectedTags.Any())
             {
                 // 无标签选择时加载所有漫画
@@ -325,7 +316,6 @@ namespace ComicViewer.Services
 
         public int TotalComicCount => _comicsSource.Count;
         public int FilteredComicCount => _comics.Count;
-        public IReadOnlyCollection<string> SelectedTagKeys => _selectedTagKeysSubject.Value;
 
         // 用于 UI 绑定的命令属性
         public ICommand SelectTagCommand { get; }

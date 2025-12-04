@@ -508,8 +508,6 @@ namespace ComicViewer
 
         protected override void OnClosed(EventArgs e)
         {
-            base.OnClosed(e);
-
             // 保存阅读进度
             LastReadPage = _currentPageIndex + 1;
 
@@ -518,10 +516,8 @@ namespace ComicViewer
             {
                 _comic.Progress = LastReadPage;
                 _comic.LastAccess = DateTime.Now;
-
-                // 触发更新事件
-                _comic.OnPropertyChanged(nameof(_comic.Progress));
             }
+            base.OnClosed(e);
         }
     }
 }

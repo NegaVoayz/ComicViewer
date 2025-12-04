@@ -159,6 +159,7 @@ namespace ComicViewer.Services
                     await LoadCompressedAsync(model, cancellation);
                 }
                 cancellation.ThrowIfCancellationRequested();
+                service.FileService.GenerateComicPath(model.Key);
             }
             catch(OperationCanceledException)
             {
@@ -174,7 +175,7 @@ namespace ComicViewer.Services
             }
             finally
             {
-                service.FileService.RemoveComicPath(model.Key);
+                service.FileService.RemoveComicTempPath(model.Key);
             }
             await service.DataService.DoneMovingTaskAsync(model);
             return;

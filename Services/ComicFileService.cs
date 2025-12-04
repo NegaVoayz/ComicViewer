@@ -1,6 +1,7 @@
 ﻿using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Common;
+using SharpCompress.Compressors.Xz;
 using SharpCompress.Readers;
 using System;
 using System.Collections;
@@ -15,25 +16,17 @@ using System.Windows.Shapes;
 
 namespace ComicViewer.Services
 {
-    struct Entry
+    class Entry
     {
         public string Path { get; set; }
         public int UseCount { get; set; }
-
-        // 或者使用构造函数
-        public Entry(string path, int useCount = 0)
-        {
-            Path = path;
-            UseCount = useCount;
-        }
+        public Func<Entry, Task> OnRemove { get; set; } = async (Entry) => { };
     }
     public class ComicFileService
     {
-        private Dictionary<string, Entry> comicPathDict
-            = new Dictionary<string, Entry>();
-        
-        private Dictionary<string, Entry> comicPathDictRemove
-            = new Dictionary<string, Entry>();
+        private Dictionary<string, Entry> comicNormalPathDict;
+
+        private Dictionary<string, Entry> comicTempPathDict;
 
         private readonly object _lock = new object();
 
@@ -42,91 +35,114 @@ namespace ComicViewer.Services
         public ComicFileService(ComicService service)
         {
             this.service = service;
+            comicNormalPathDict = new();
+            comicTempPathDict = new();
         }
-
-        private async Task RemoveTempFile(string path)
+        private static async Task RemoveFile(Entry entry)
         {
             await Task.Run(() =>
             {
-                if (File.Exists(path))
+                if (File.Exists(entry.Path))
                 {
-                    File.Delete(path);
+                    File.Delete(entry.Path);
                 }
             });
         }
+        private static async Task DoNothing(Entry entry) {}
 
-        public bool AddComicPath(string key, string path)
+        public bool AddComicTempPath(string Key, string path)
         {
             lock (_lock)
             {
-                if (comicPathDict.ContainsKey(key))
+                if (comicTempPathDict.TryGetValue(Key, out var entry))
                 {
-                    var entry = comicPathDict[key];
-                    comicPathDict[key] = new Entry { Path = entry.Path, UseCount = entry.UseCount + 1 };
+                    entry.UseCount++;
                     return false;
                 }
-                comicPathDict[key] = new Entry{Path=path, UseCount=1};
-                return true;
-            }
-        }
-
-        public bool RemoveComicPath(string key)
-        {
-            lock (_lock)
-            {
-                if (!comicPathDict.ContainsKey(key))
+                else
                 {
-                    return false;
-                }
-                var entry = comicPathDict[key];
-                entry.UseCount--;// the copier no longer occupies the file.
-
-                comicPathDict.Remove(key);
-                if(entry.UseCount == 0)
-                {
-                    _ = RemoveTempFile(entry.Path);// silent remove
+                    comicTempPathDict[Key] = new Entry { Path = path, OnRemove = RemoveFile, UseCount = 1 };
                     return true;
                 }
-                // if there's one, replace
-                comicPathDictRemove[key] = entry;
+            }
+        }
+
+        public bool RemoveComicTempPath(string Key)
+        {
+            lock (_lock)
+            {
+                if (!comicTempPathDict.TryGetValue(Key, out var entry))
+                {
+                    return false;
+                }
+                entry.UseCount--;// the copier no longer occupies the file.
+
+                if(entry.UseCount == 0)
+                {
+                    comicTempPathDict.Remove(Key);
+                    entry.OnRemove(entry);
+                    return true;
+                }
                 return true;
             }
         }
 
-        public string GetComicPath(ComicModel comic)
+        public void GenerateComicPath(string Key)
         {
             lock (_lock)
             {
-                if(comicPathDict.TryGetValue(comic.Key, out var entry))
+                if (comicNormalPathDict.TryGetValue(Key, out var entry))
                 {
-                    comicPathDict[comic.Key] = new Entry { Path=entry.Path, UseCount=entry.UseCount + 1 };
-                    return entry.Path;
+                    return;
                 }
+                var path = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
+                comicNormalPathDict[Key] = new Entry { Path = path, OnRemove = DoNothing, UseCount = 0 };
+                return;
             }
-            return System.IO.Path.Combine(Configs.GetFilePath(), $"{comic.Key}.zip");
         }
 
-        public void ReleaseComicPath(string Key)
+        public string GetComicPath(string Key)
         {
             lock (_lock)
             {
                 Entry entry;
-                if (comicPathDict.TryGetValue(Key, out entry))
+                foreach(var dict in new Dictionary<string, Entry>[] { comicNormalPathDict, comicTempPathDict })
                 {
-                    comicPathDict[Key] = new Entry { Path = entry.Path, UseCount = entry.UseCount - 1 };
+                    if (dict.TryGetValue(Key, out entry))
+                    {
+                        entry.UseCount++;
+                        return entry.Path;
+                    }
+                }
+                var path = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
+                comicNormalPathDict[Key] = new Entry { Path = path, OnRemove = DoNothing, UseCount = 1 };
+                return path;
+            }
+        }
+
+        public void ReleaseComicPath(string Key, string path)
+        {
+            lock (_lock)
+            {
+                Entry entry;
+                if (comicNormalPathDict.TryGetValue(Key, out entry) && entry.Path == path)
+                {
+                    entry.UseCount--;
+                    // if no using and no routing overwrite needed
+                    if (entry.UseCount <= 0 && !comicTempPathDict.TryGetValue(Key, out _))
+                    {
+                        comicNormalPathDict.Remove(Key);
+                        entry.OnRemove(entry);
+                    }
                     return;
                 }
-                if (comicPathDictRemove.TryGetValue(Key, out entry))
+                if (comicTempPathDict.TryGetValue(Key, out entry) && entry.Path == path)
                 {
-                    int newCount = entry.UseCount - 1;
-                    if (newCount <= 0)
+                    entry.UseCount--;
+                    if (entry.UseCount <= 0)
                     {
-                        comicPathDictRemove.Remove(Key);
-                        _ = RemoveTempFile(entry.Path);// silent remove
-                    }
-                    else
-                    {
-                        comicPathDictRemove[Key] = new Entry { Path = entry.Path, UseCount = entry.UseCount - 1 };
+                        comicTempPathDict.Remove(Key);
+                        entry.OnRemove(entry);
                     }
                 }
             }
@@ -134,26 +150,26 @@ namespace ComicViewer.Services
 
         public async Task RemoveComicAsync(string Key)
         {
-            Entry entry;
-            bool found;
-            string fullPath = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
-            lock (_lock)
+            bool loaded = true;
+            if (comicTempPathDict.TryGetValue(Key, out _))// not opened operation
             {
-                found = comicPathDict.TryGetValue(Key, out entry);
+                // if stoppable, it isn't loaded
+                loaded = !(await service.FileLoader.StopMovingTask(Key));
             }
-            if(!found)
+            if (comicNormalPathDict.TryGetValue(Key, out var entry))
             {
-                // closed
-                // remove
-                await Task.Run(()=>File.Delete(fullPath));
+                entry.OnRemove = RemoveFile;
+                if(entry.UseCount == 0)
+                {
+                    comicNormalPathDict.Remove(Key);
+                    await entry.OnRemove(entry);
+                }
                 return;
             }
-            // open
-            // stop
-            var stopped = await service.FileLoader.StopMovingTask(Key);
-            if (!stopped)
+            if(loaded)
             {
-                await Task.Run(() => File.Delete(fullPath));
+                var path = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
+                await RemoveFile( new Entry { Path = path, OnRemove = RemoveFile, UseCount = 0 } );
             }
             return;
         }
@@ -162,7 +178,7 @@ namespace ComicViewer.Services
         {
             return await Task.Run(() =>
             {
-                var path = GetComicPath(comic);
+                var path = GetComicPath(comic.Key);
 
                 try
                 {
@@ -180,7 +196,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic.Key);
+                    ReleaseComicPath(comic.Key, path);
                 }
             });
         }
@@ -201,7 +217,7 @@ namespace ComicViewer.Services
         {
             return await Task.Run(() =>
             {
-                var path = GetComicPath(comic);
+                var path = GetComicPath(comic.Key);
 
                 try
                 {
@@ -219,7 +235,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic.Key);
+                    ReleaseComicPath(comic.Key, path);
                 }
             });
         }
@@ -253,7 +269,7 @@ namespace ComicViewer.Services
         {
             return await Task.Run(async () =>
             {
-                var archivePath = GetComicPath(comic);
+                var archivePath = GetComicPath(comic.Key);
 
                 try
                 {
@@ -270,7 +286,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic.Key);
+                    ReleaseComicPath(comic.Key, archivePath);
                 }
             });
         }
@@ -298,7 +314,10 @@ namespace ComicViewer.Services
                 {
                     // 流式读取图片，不缓存整个文件
                     using var imageStream = reader.OpenEntryStream();
-                    return CreateBitmapImage(imageStream);
+                    using var memoryStream = new MemoryStream();
+                    await imageStream.CopyToAsync(memoryStream);
+                    memoryStream.Position = 0;
+                    return CreateBitmapImage(memoryStream);
                 }
             }
 

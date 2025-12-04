@@ -1,6 +1,7 @@
 ﻿using ComicViewer.Models;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using System.Text;
@@ -140,10 +141,10 @@ namespace ComicViewer.Converters
             {
                 if (values[0] is int progress && values[1] is int length && length > 0)
                 {
-                    var percentage = (int)((double)progress / length * 100.0);
-                    return $"阅读进度: {percentage}%";
+                    var percentage = (int)((double)progress / length * 100);
+                    return $"阅读进度: {progress}/{length} ({percentage}%)";
                 }
-                return "阅读进度: 0%";
+                return "阅读进度: 加载中...";
             }
 
             public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)

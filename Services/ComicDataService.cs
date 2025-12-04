@@ -25,6 +25,95 @@ namespace ComicViewer.Services
             this.service = service;
         }
 
+        public async Task AddTagAsync(string tagName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var tagKey = ComicExporter.CalculateMD5(tagName);
+
+            var existingTag = await context.Tags.FirstOrDefaultAsync(t => t.Key == tagKey);
+
+            if(existingTag != null)
+            {
+                return;
+            }
+            var tag = new TagModel
+            {
+                Key = tagKey,
+                Name = tagName,
+                Count = 0
+            };
+            await context.Tags.AddAsync(tag);
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task AddTagsAsync(IEnumerable<string> tagNames)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var existingTags = await context.Tags
+                    .Where(t => tagNames.Contains(t.Name))
+                    .ToDictionaryAsync(t => t.Name, t => t);
+
+            foreach (var tagName in tagNames)
+            {
+                if (!existingTags.TryGetValue(tagName, out var tag))
+                {
+                    // 不存在，创建
+                    var newTag = new TagModel
+                    {
+                        Key = ComicExporter.CalculateMD5(tagName),
+                        Name = tagName,
+                        Count = 0
+                    };
+                    context.Tags.Add(newTag);
+                }
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task AddTagToComicAsync(string comicKey, string tagName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var tag = await context.Tags.FirstAsync(e => e.Key == ComicExporter.CalculateMD5(tagName));
+            if(tag == null)
+            {
+                return;
+            }
+            tag.Count++;
+
+            await context.ComicTags.AddAsync(
+                new ComicTag
+                {
+                    ComicKey = comicKey,
+                    TagKey = tag.Key
+                }
+            );
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task AddTagsToComicAsync(string comicKey, IEnumerable<string> tagKeys)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            await context.Tags.Where(e => tagKeys.Contains(e.Key)).ForEachAsync(e => e.Count++);
+
+            await context.ComicTags.AddRangeAsync(
+                tagKeys.Select(e =>
+                new ComicTag
+                {
+                    ComicKey = comicKey,
+                    TagKey = e
+                })
+            );
+
+            await context.SaveChangesAsync();
+        }
+
         public MovingFileModel? GetMovingTask(string Key)
         {
             using var context = _contextFactory.CreateDbContext();
@@ -83,6 +172,20 @@ namespace ComicViewer.Services
             await using var context = await _contextFactory.CreateDbContextAsync();
             var comic = await context.Comics.FindAsync(comicKey);
             if (comic == null) return;
+
+            var comicTags = comic.ComicTags;
+            if(comicTags != null)
+            {
+                context.Tags.UpdateRange(
+                    comicTags.Select(ct => new TagModel
+                    {
+                        Key = ct.Tag.Key,
+                        Name = ct.Tag.Name,
+                        Count = ct.Tag.Count - 1
+                    })
+                );
+            }
+            // comicTags are automatically removed by CASCADE DELETE constraint
 
             context.Comics.Remove(comic);
             await context.SaveChangesAsync();
