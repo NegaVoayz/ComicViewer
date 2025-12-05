@@ -1,18 +1,10 @@
 ﻿using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Common;
-using SharpCompress.Compressors.Xz;
 using SharpCompress.Readers;
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
-using System.Windows.Shapes;
 
 namespace ComicViewer.Services
 {
@@ -48,7 +40,7 @@ namespace ComicViewer.Services
                 }
             });
         }
-        private static async Task DoNothing(Entry entry) {}
+        private static async Task DoNothing(Entry entry) { }
 
         public bool AddComicTempPath(string Key, string path)
         {
@@ -77,7 +69,7 @@ namespace ComicViewer.Services
                 }
                 entry.UseCount--;// the copier no longer occupies the file.
 
-                if(entry.UseCount == 0)
+                if (entry.UseCount == 0)
                 {
                     comicTempPathDict.Remove(Key);
                     entry.OnRemove(entry);
@@ -106,7 +98,7 @@ namespace ComicViewer.Services
             lock (_lock)
             {
                 Entry entry;
-                foreach(var dict in new Dictionary<string, Entry>[] { comicNormalPathDict, comicTempPathDict })
+                foreach (var dict in new Dictionary<string, Entry>[] { comicNormalPathDict, comicTempPathDict })
                 {
                     if (dict.TryGetValue(Key, out entry))
                     {
@@ -159,16 +151,16 @@ namespace ComicViewer.Services
             if (comicNormalPathDict.TryGetValue(Key, out var entry))
             {
                 entry.OnRemove = RemoveFile;
-                if(entry.UseCount == 0)
+                if (entry.UseCount == 0)
                 {
                     comicNormalPathDict.Remove(Key);
                     await entry.OnRemove(entry);
                 }
                 return;
             }
-            if(loaded)
+            if (loaded)
             {
-                await RemoveFile( new Entry { Path = ComicUtils.ComicNormalPath(Key), OnRemove = RemoveFile, UseCount = 0 } );
+                await RemoveFile(new Entry { Path = ComicUtils.ComicNormalPath(Key), OnRemove = RemoveFile, UseCount = 0 });
             }
             return;
         }

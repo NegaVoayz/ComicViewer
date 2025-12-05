@@ -1,5 +1,4 @@
-﻿using System.Reflection.Metadata;
-using System.Windows;
+﻿using System.Windows;
 using System.Windows.Threading;
 
 namespace ComicViewer.Services

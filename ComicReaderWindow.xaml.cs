@@ -1,12 +1,12 @@
-﻿using System.Diagnostics;
+﻿using ComicViewer.Models;
+using ComicViewer.Services;
+using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
-using ComicViewer.Models;
-using ComicViewer.Services;
 
 namespace ComicViewer
 {
@@ -32,7 +32,7 @@ namespace ComicViewer
             TitleText.Text = _comic.Title;
 
             Loaded += ComicReaderWindow_Loaded;
-            
+
             // 订阅删除事件
             ComicEvents.ComicDeleted += OnComicDeleted;
 
@@ -111,7 +111,7 @@ namespace ComicViewer
             // 如果有阅读进度，跳转到对应页面
             if (_comic.Progress > 0)
             {
-                return _comic.Progress-1;
+                return _comic.Progress - 1;
             }
             return 0;
         }

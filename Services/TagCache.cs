@@ -1,15 +1,9 @@
 ﻿using ComicViewer.Models;
 using DynamicData;
-using DynamicData.Binding;
 using ReactiveUI;
-using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Security.Cryptography;
-using System.Threading.Tasks;
 using System.Windows.Input;
 
 namespace ComicViewer.Services
@@ -57,7 +51,7 @@ namespace ComicViewer.Services
             // 创建 ViewModel
             ViewModel = new(_unselectedTags, _selectedTags);
         }
-        
+
         public async Task InitializeAsync()
         {
             var tags = await service.DataService.GetAllTagsAsync();

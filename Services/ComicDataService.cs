@@ -2,12 +2,7 @@
 using ComicViewer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace ComicViewer.Services
 {
@@ -33,7 +28,7 @@ namespace ComicViewer.Services
 
             var existingTag = await context.Tags.FirstOrDefaultAsync(t => t.Key == tagKey);
 
-            if(existingTag != null)
+            if (existingTag != null)
             {
                 return existingTag;
             }
@@ -148,7 +143,7 @@ namespace ComicViewer.Services
             var removedTagKeys = oldTagKeysSet.Except(newTagKeysSet).ToHashSet();  // 在旧不在新
             var addedTagKeys = newTagKeysSet.Except(oldTagKeysSet).ToHashSet();    // 在新不在旧
 
-            if(addedTagKeys.Any())
+            if (addedTagKeys.Any())
             {
                 await context.Tags.Where(e => addedTagKeys.Contains(e.Key)).ForEachAsync(e => e.Count++);
                 await context.ComicTags.AddRangeAsync(
@@ -161,7 +156,7 @@ namespace ComicViewer.Services
                 );
             }
 
-            if(removedTagKeys.Any())
+            if (removedTagKeys.Any())
             {
                 await context.ComicTags.Where(e => e.ComicKey == comicKey && removedTagKeys.Contains(e.TagKey))
                     .ExecuteDeleteAsync();
@@ -195,13 +190,13 @@ namespace ComicViewer.Services
                 return "TagMe";
             }
 
-            if(tags.Count()==4)
+            if (tags.Count() == 4)
             {
                 var temp = tags.Last();
                 temp = "...";
             }
-            
-            return string.Join(", ",tags);
+
+            return string.Join(", ", tags);
         }
 
         public MovingFileModel? GetMovingTask(string Key)
@@ -264,7 +259,7 @@ namespace ComicViewer.Services
             if (comic == null) return;
 
             var comicTags = context.ComicTags.Where(e => e.ComicKey == comicKey).Select(e => e.TagKey).ToHashSet();
-            if(comicTags != null)
+            if (comicTags != null)
             {
                 // comicTags are automatically removed by CASCADE DELETE constraint
                 // But I don't trust it

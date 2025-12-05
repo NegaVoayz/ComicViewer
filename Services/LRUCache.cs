@@ -1,19 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace ComicViewer.Services
+﻿namespace ComicViewer.Services
 {
-    using System.Collections.Concurrent;
     using System.Collections.Generic;
-    using System.Xml.Linq;
 
     public class LRUCache<TKey, TValue>
     {
         private readonly int _capacity;
-        private readonly Dictionary<TKey, LinkedListNode<KeyValuePair<TKey,TValue>>> _cache;
+        private readonly Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>> _cache;
         private readonly LinkedList<KeyValuePair<TKey, TValue>> _accessQueue;
         private readonly object _lock = new object();
 

@@ -1,6 +1,4 @@
 ﻿using ComicViewer.Database;
-using System.Configuration;
-using System.Data;
 using System.Windows;
 
 namespace ComicViewer
@@ -14,7 +12,7 @@ namespace ComicViewer
         {
             base.OnStartup(e);
             ComicContext.Instance.Database.EnsureCreated();
-        }   
+        }
     }
 
 }

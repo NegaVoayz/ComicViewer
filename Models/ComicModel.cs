@@ -1,10 +1,10 @@
-﻿using System.Windows.Media.Imaging;
+﻿using ComicViewer.Services;
+using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
-using System.Runtime.CompilerServices;
-using ComicViewer.Services;
-using Microsoft.EntityFrameworkCore;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Runtime.CompilerServices;
+using System.Windows.Media.Imaging;
 
 namespace ComicViewer.Models
 {
@@ -110,7 +110,7 @@ namespace ComicViewer.Models
                 }
                 return _tagsPreview ?? "N/A";
             }
-            set =>SetField(ref _tagsPreview, value);
+            set => SetField(ref _tagsPreview, value);
         }
 
         public int Progress
@@ -126,7 +126,7 @@ namespace ComicViewer.Models
                 // 当访问Length时，如果为空则触发懒加载
                 if (_length == 0)
                 {
-                    if(_lengthTask == null)
+                    if (_lengthTask == null)
                     {
                         // 开始加载，但不等待
                         _lengthTask = new ObservableTask<int>(service.FileService.CountComicLengthAsync(this));
@@ -136,7 +136,7 @@ namespace ComicViewer.Models
                 }
                 return _length;
             }
-            private set => SetField(ref _length, value); 
+            private set => SetField(ref _length, value);
         }
 
         public BitmapImage CoverImage

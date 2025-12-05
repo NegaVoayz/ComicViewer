@@ -1,14 +1,7 @@
 ﻿using ComicViewer.Models;
 using SharpCompress.Archives.Tar;
-using SharpCompress.Common;
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Security.Cryptography;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace ComicViewer.Services
 {
@@ -102,7 +95,7 @@ namespace ComicViewer.Services
                 await service.DataService.AddComicAsync(comic);
                 await service.FileLoader.AddMovingTask(comic.Key, filePath);
             }
-            
+
             if (comicMetadata != null)
             {
                 await service.DataService.AddTagsToComicAsync(comic.Key, comicMetadata.GetTagKeys());

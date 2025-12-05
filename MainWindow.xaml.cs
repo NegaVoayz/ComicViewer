@@ -1,17 +1,12 @@
-﻿using System.Collections.ObjectModel;
+﻿using ComicViewer.Models;
+using ComicViewer.Services;
+using Microsoft.Win32;
 using System.Diagnostics;
 using System.IO;
-using System.Reflection;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Data;
 using System.Windows.Input;
-using System.Windows.Media;
-using ComicViewer.Database;
-using ComicViewer.Models;
-using ComicViewer.Services;
-using Microsoft.Win32;
 
 namespace ComicViewer
 {
@@ -293,7 +288,7 @@ namespace ComicViewer
                 await service.Exporter.CreateSharePackageAsync(comic, saveDialog.FileName);
             }
         }
-         
+
         private void RevealInExplorer(string comicKey)
         {
             // 在资源管理器中定位文件
@@ -372,7 +367,7 @@ namespace ComicViewer
                     MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
-        private async Task AddComicsFromFilesAsync(string[] filePaths, object? sender=null)
+        private async Task AddComicsFromFilesAsync(string[] filePaths, object? sender = null)
         {
             int successCount = 0;
             int skipCount = 0;
@@ -513,7 +508,7 @@ namespace ComicViewer
             }
         }
 
-        private void ClearFilters_Click(object sender, RoutedEventArgs e) 
+        private void ClearFilters_Click(object sender, RoutedEventArgs e)
         {
             service.Cache.ClearSelectedTags();
         }
@@ -646,7 +641,7 @@ namespace ComicViewer
 
                     // 重新加载漫画库
                     _ = service.Loader.MigrateComicLibrary(oldPath, newPath);
-                    
+
                     ShowStatusMessage($"保存目录已更改为: {newPath}", 3000);
                 }
             }

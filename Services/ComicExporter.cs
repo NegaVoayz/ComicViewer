@@ -1,9 +1,8 @@
-﻿using System.Text;
-using System.Security.Cryptography;
-using ComicViewer.Models;
+﻿using ComicViewer.Models;
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using System.IO;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Windows;
@@ -70,7 +69,7 @@ namespace ComicViewer.Services
             }
         }
     }
-    
+
     public class ComicMetadata
     {
         [JsonPropertyName("version")]

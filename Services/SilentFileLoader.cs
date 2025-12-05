@@ -2,17 +2,11 @@
 using SharpCompress.Archives;
 using SharpCompress.Archives.Tar;
 using SharpCompress.Common;
-using SharpCompress.Common.GZip;
-using SharpCompress.Common.Zip;
 using SharpCompress.Writers;
 using System.Collections.Concurrent;
 using System.IO;
-using System.IO.Compression;
 using System.IO.MemoryMappedFiles;
-using System.Text;
-using System.Text.Json;
 using System.Threading.Channels;
-using System.Windows.Shapes;
 
 namespace ComicViewer.Services
 {
@@ -161,7 +155,7 @@ namespace ComicViewer.Services
                 cancellation.ThrowIfCancellationRequested();
                 service.FileService.GenerateComicPath(model.Key);
             }
-            catch(OperationCanceledException)
+            catch (OperationCanceledException)
             {
                 await CleanupFileAsync(model.DestinationPath);
             }
