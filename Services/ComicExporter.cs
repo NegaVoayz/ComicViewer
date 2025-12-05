@@ -20,52 +20,6 @@ namespace ComicViewer.Services
             this.service = service;
         }
 
-        private ComicData CreateComicDataFromFile(string filePath)
-        {
-            // 获取文件名（不包含路径和扩展名）
-            string fileName = Path.GetFileNameWithoutExtension(filePath);
-
-            // 使用文件名作为Title
-            string title = fileName;
-
-            // 计算MD5作为Key
-            string key = CalculateMD5(title);
-
-            // 获取文件信息
-            FileInfo fileInfo = new FileInfo(filePath);
-
-            return new ComicData
-            {
-                Key = key,
-                Title = title,
-                // 从文件系统获取时间信息
-                CreatedTime = fileInfo.CreationTime,
-                LastAccess = fileInfo.LastAccessTime,
-                // 设置默认值
-                Progress = 0,           // 未开始阅读
-                Rating = 0,             // 未评分
-                                             // 集合属性可以初始化为空列表
-                ComicTags = new List<ComicTag>()
-            };
-        }
-        public static string CalculateMD5(string input)
-        {
-            using (var md5 = MD5.Create())
-            {
-                // 对于中文字符，使用UTF-8编码
-                byte[] inputBytes = Encoding.UTF8.GetBytes(input);
-                byte[] hashBytes = md5.ComputeHash(inputBytes);
-
-                StringBuilder sb = new StringBuilder();
-                foreach (byte b in hashBytes)
-                {
-                    sb.Append(b.ToString("x2"));
-                }
-
-                return sb.ToString();
-            }
-        }
-
         public async Task CreateSharePackageAsync(ComicModel comic, string destinationPath)
         {
             string sourceFilePath = service.FileService.GetComicPath(comic.Key);
@@ -95,6 +49,8 @@ namespace ComicViewer.Services
 
                     // 2. 添加metadata.json
                     var metadata = comicData.ToComicMetadata();
+                    var tags = await service.DataService.GetTagsOfComic(comicData.Key);
+                    metadata.Tags = tags.Select(e => e.Name).ToList();
                     var metadataJson = JsonSerializer.Serialize(metadata);
                     var metadataBytes = Encoding.UTF8.GetBytes(metadataJson);
 
@@ -129,7 +85,7 @@ namespace ComicViewer.Services
         {
             return new ComicData
             {
-                Key = ComicExporter.CalculateMD5(Title),
+                Key = ComicUtils.CalculateMD5(Title),
                 Title = Title,
                 CreatedTime = System?.CreatedTime,
                 LastAccess = System?.LastAccess,
@@ -142,14 +98,14 @@ namespace ComicViewer.Services
             return Tags.Select(t =>
                 new TagModel
                 {
-                    Key = ComicExporter.CalculateMD5(t),
+                    Key = ComicUtils.CalculateMD5(t),
                     Name = t,
                     Count = 1
                 }).ToList();
         }
         public List<string> GetTagKeys()
         {
-            return Tags.Select(t => ComicExporter.CalculateMD5(t)).ToList();
+            return Tags.Select(t => ComicUtils.CalculateMD5(t)).ToList();
         }
     }
 

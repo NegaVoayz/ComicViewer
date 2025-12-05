@@ -48,8 +48,7 @@ namespace ComicViewer.Models
                 Key = Key,
                 LastAccess = LastAccess,
                 CreatedTime = CreatedTime,
-                Rating = Rating,
-                Tags = ComicTags?.Select(ct => ct.Tag.Name).ToArray() ?? Array.Empty<string>()
+                Rating = Rating
             };
         }
 
@@ -76,7 +75,8 @@ namespace ComicViewer.Models
         private ComicService service;
         public string Key { get; set; }
         private string _title;
-        private string[] _tags;
+        private ObservableTask<string> _tagsTask;
+        private string _tagsPreview;
         private int _progress;
         private int _length = 0;
         private ObservableTask<int> _lengthTask;
@@ -97,10 +97,20 @@ namespace ComicViewer.Models
             set => SetField(ref _title, value);
         }
 
-        public string[] Tags
+        public string TagsPreview
         {
-            get => _tags;
-            set => SetField(ref _tags, value);
+            get
+            {
+                // 当访问Tags时，如果为空则触发懒加载
+                if (_tagsPreview == null && _tagsTask == null)
+                {
+                    // 开始加载，但不等待
+                    _tagsTask = new ObservableTask<string>(service.DataService.GetTagsPreviewOfComic(Key));
+                    _tagsTask.PropertyChanged += OnTagsTaskPropertyChanged;
+                }
+                return _tagsPreview ?? "N/A";
+            }
+            set =>SetField(ref _tagsPreview, value);
         }
 
         public int Progress
@@ -144,17 +154,19 @@ namespace ComicViewer.Models
             }
             private set => SetField(ref _coverImage, value);
         }
-        public string TagsPreview
-        {
-            get
-            {
-                if (_tags == null || _tags.Length == 0)
-                    return "TagMe";
 
-                return String.Join(", ",_tags.Take(3));
+        private void OnTagsTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName == nameof(ObservableTask<string>.Result))
+            {
+                if (_tagsTask.Result != null)
+                {
+                    TagsPreview = _tagsTask.Result;
+                    OnPropertyChanged();
+                    _tagsTask = null;
+                }
             }
         }
-
         private void OnCoverTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ObservableTask<BitmapImage>.Result))

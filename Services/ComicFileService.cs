@@ -95,7 +95,7 @@ namespace ComicViewer.Services
                 {
                     return;
                 }
-                var path = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
+                var path = ComicUtils.ComicNormalPath(Key);
                 comicNormalPathDict[Key] = new Entry { Path = path, OnRemove = DoNothing, UseCount = 0 };
                 return;
             }
@@ -114,7 +114,7 @@ namespace ComicViewer.Services
                         return entry.Path;
                     }
                 }
-                var path = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
+                var path = ComicUtils.ComicNormalPath(Key);
                 comicNormalPathDict[Key] = new Entry { Path = path, OnRemove = DoNothing, UseCount = 1 };
                 return path;
             }
@@ -168,8 +168,7 @@ namespace ComicViewer.Services
             }
             if(loaded)
             {
-                var path = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
-                await RemoveFile( new Entry { Path = path, OnRemove = RemoveFile, UseCount = 0 } );
+                await RemoveFile( new Entry { Path = ComicUtils.ComicNormalPath(Key), OnRemove = RemoveFile, UseCount = 0 } );
             }
             return;
         }

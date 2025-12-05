@@ -25,17 +25,17 @@ namespace ComicViewer.Services
             this.service = service;
         }
 
-        public async Task AddTagAsync(string tagName)
+        public async Task<TagModel> AddTagAsync(string tagName)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            var tagKey = ComicExporter.CalculateMD5(tagName);
+            var tagKey = ComicUtils.CalculateMD5(tagName);
 
             var existingTag = await context.Tags.FirstOrDefaultAsync(t => t.Key == tagKey);
 
             if(existingTag != null)
             {
-                return;
+                return existingTag;
             }
             var tag = new TagModel
             {
@@ -46,6 +46,8 @@ namespace ComicViewer.Services
             await context.Tags.AddAsync(tag);
 
             await context.SaveChangesAsync();
+
+            return tag;
         }
 
         public async Task AddTagsAsync(IEnumerable<string> tagNames)
@@ -63,7 +65,7 @@ namespace ComicViewer.Services
                     // 不存在，创建
                     var newTag = new TagModel
                     {
-                        Key = ComicExporter.CalculateMD5(tagName),
+                        Key = ComicUtils.CalculateMD5(tagName),
                         Name = tagName,
                         Count = 0
                     };
@@ -78,14 +80,36 @@ namespace ComicViewer.Services
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            var tag = await context.Tags.FirstAsync(e => e.Key == ComicExporter.CalculateMD5(tagName));
-            if(tag == null)
+            var tag = await context.Tags.FirstAsync(e => e.Key == ComicUtils.CalculateMD5(tagName));
+            if (tag == null)
             {
                 return;
             }
             tag.Count++;
 
             await context.ComicTags.AddAsync(
+                new ComicTag
+                {
+                    ComicKey = comicKey,
+                    TagKey = tag.Key
+                }
+            );
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task RemoveTagFromComicAsync(string comicKey, string tagName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var tag = await context.Tags.FirstAsync(e => e.Key == ComicUtils.CalculateMD5(tagName));
+            if (tag == null)
+            {
+                return;
+            }
+            tag.Count--;
+
+            context.ComicTags.Remove(
                 new ComicTag
                 {
                     ComicKey = comicKey,
@@ -112,6 +136,72 @@ namespace ComicViewer.Services
             );
 
             await context.SaveChangesAsync();
+        }
+
+        public async Task ChangeTagsToComicAsync(string comicKey, IEnumerable<string> tagKeys)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            HashSet<string> newTagKeysSet = new(tagKeys);
+            var oldTagKeysSet = context.ComicTags.Where(e => e.ComicKey == comicKey).Select(e => e.TagKey).ToHashSet();
+
+            var removedTagKeys = oldTagKeysSet.Except(newTagKeysSet).ToHashSet();  // 在旧不在新
+            var addedTagKeys = newTagKeysSet.Except(oldTagKeysSet).ToHashSet();    // 在新不在旧
+
+            if(addedTagKeys.Any())
+            {
+                await context.Tags.Where(e => addedTagKeys.Contains(e.Key)).ForEachAsync(e => e.Count++);
+                await context.ComicTags.AddRangeAsync(
+                    addedTagKeys.Select(e =>
+                    new ComicTag
+                    {
+                        ComicKey = comicKey,
+                        TagKey = e
+                    })
+                );
+            }
+
+            if(removedTagKeys.Any())
+            {
+                await context.ComicTags.Where(e => e.ComicKey == comicKey && removedTagKeys.Contains(e.TagKey))
+                    .ExecuteDeleteAsync();
+                await context.Tags.Where(e => e.Count == 0 || e.Count == 1 && removedTagKeys.Contains(e.Key))
+                    .ExecuteDeleteAsync();
+                await context.Tags.Where(e => e.Count > 1 && removedTagKeys.Contains(e.Key)).ForEachAsync(e => e.Count--);
+            }
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task<List<TagModel>> GetTagsOfComic(string comicKey)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            return context.ComicTags
+                .Where(e => e.ComicKey == comicKey)
+                .Select(e => e.Tag).ToList();
+        }
+
+        public async Task<string> GetTagsPreviewOfComic(string comicKey)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            List<string> tags = await Task.Run(() => context.ComicTags.Where(e => e.ComicKey == comicKey).Include(e => e.Tag)
+                .Select(e => e.Tag.Name)
+                .Take(4).ToList());
+
+            if (!tags.Any())
+            {
+                return "TagMe";
+            }
+
+            if(tags.Count()==4)
+            {
+                var temp = tags.Last();
+                temp = "...";
+            }
+            
+            return string.Join(", ",tags);
         }
 
         public MovingFileModel? GetMovingTask(string Key)
@@ -173,19 +263,17 @@ namespace ComicViewer.Services
             var comic = await context.Comics.FindAsync(comicKey);
             if (comic == null) return;
 
-            var comicTags = comic.ComicTags;
+            var comicTags = context.ComicTags.Where(e => e.ComicKey == comicKey).Select(e => e.TagKey).ToHashSet();
             if(comicTags != null)
             {
-                context.Tags.UpdateRange(
-                    comicTags.Select(ct => new TagModel
-                    {
-                        Key = ct.Tag.Key,
-                        Name = ct.Tag.Name,
-                        Count = ct.Tag.Count - 1
-                    })
-                );
+                // comicTags are automatically removed by CASCADE DELETE constraint
+                // But I don't trust it
+                await context.ComicTags.Where(e => e.ComicKey == comicKey && comicTags.Contains(e.TagKey))
+                    .ExecuteDeleteAsync();
+                await context.Tags.Where(e => e.Count == 0 || e.Count == 1 && comicTags.Contains(e.Key))
+                    .ExecuteDeleteAsync();
+                await context.Tags.Where(e => e.Count > 1 && comicTags.Contains(e.Key)).ForEachAsync(e => e.Count--);
             }
-            // comicTags are automatically removed by CASCADE DELETE constraint
 
             context.Comics.Remove(comic);
             await context.SaveChangesAsync();

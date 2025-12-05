@@ -66,12 +66,13 @@ namespace ComicViewer.Converters
                 Margin = new Thickness(0, 0, 0, 4)
             };
 
-            // 创建一个多值绑定来格式化标签
-            var tagsBinding = new MultiBinding
+            // 创建一个绑定来格式化标签
+            var tagsBinding = new Binding("TagsPreview")
             {
-                Converter = new TagsFormatConverter()
+                Converter = new TagsFormatConverter(),
+                Source = comic
+
             };
-            tagsBinding.Bindings.Add(new Binding("Tags") { Source = comic });
             tagsBlock.SetBinding(TextBlock.TextProperty, tagsBinding);
 
             // 阅读进度 - 使用绑定和多值转换器
@@ -115,20 +116,18 @@ namespace ComicViewer.Converters
         }
 
         // 标签格式化转换器
-        private class TagsFormatConverter : IMultiValueConverter
+        private class TagsFormatConverter : IValueConverter
         {
-            public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
             {
-                if (values[0] is string[] tags)
+                if (value is string tagsPreview)
                 {
-                    return "标签: " + (tags != null && tags.Length > 0
-                        ? string.Join(", ", tags)
-                        : "无");
+                    return "标签: " + tagsPreview;
                 }
                 return "标签: 无";
             }
 
-            public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+            public object ConvertBack(object value, Type targetTypes, object parameter, CultureInfo culture)
             {
                 throw new NotImplementedException();
             }

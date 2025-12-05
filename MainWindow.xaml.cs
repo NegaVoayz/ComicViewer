@@ -8,6 +8,7 @@ using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using ComicViewer.Database;
 using ComicViewer.Models;
 using ComicViewer.Services;
 using Microsoft.Win32;
@@ -237,10 +238,44 @@ namespace ComicViewer
         {
             // 弹出标签编辑窗口
             // 允许添加/删除标签
-            // 保存到对应的JSON文件
-            //var dialog = new TagEditDialog(comic);
-            //dialog.ShowDialog();
-            MessageBox.Show($"编辑漫画: {comic.Title}");
+            try
+            {
+                ShowStatusMessage($"正在打开: {comic.Title}", 1000);
+
+                // 创建并显示编辑器窗口（非模态）
+                var dialog = new EditTagsDialog(service, comic)
+                {
+                    Owner = this,
+                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                };
+
+                // 订阅窗口关闭事件
+                dialog.Closed += async (s, e) =>
+                {
+                    if (dialog.Changed == true)
+                    {
+                        // 更新漫画标签
+                        comic.TagsPreview = null;
+                        _ = comic.TagsPreview;
+
+                        // 显示反馈
+                        ShowStatusMessage($"已更新《{comic.Title}》的标签", 2000);
+
+                        // 刷新显示
+                        await service.Cache.RefreshTagsAsync();
+                        await service.Cache.RefreshComicsAsync();
+                    }
+                };
+
+                // 显示窗口（非模态）
+                dialog.Show();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"打开漫画失败:\n{ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowStatusMessage($"打开失败: {comic.Title}", 2000);
+            }
         }
 
         private async Task ShareComic(ComicModel comic)
@@ -282,11 +317,10 @@ namespace ComicViewer
                 await service.Cache.RemoveComic(comic.Key);
                 // 发布删除事件
                 ComicEvents.PublishComicDeleted(comic.Key);
-                //SaveLibraryIndex(); // 更新索引文件
             }
         }
 
-        private void DeleteComicFile(ComicModel comic)
+        private async Task DeleteComicFile(ComicModel comic)
         {
             // 彻底删除文件
             var result = MessageBox.Show(
@@ -297,15 +331,15 @@ namespace ComicViewer
 
             if (result == MessageBoxResult.Yes)
             {
-
-                // 删除漫画文件
-                _ = service.FileService.RemoveComicAsync(comic.Key);
-                // remove comic record
-                _ = service.DataService.RemoveComicAsync(comic.Key);
                 // 发布删除事件
                 ComicEvents.PublishComicDeleted(comic.Key);
+                // 删除漫画文件
+                _ = service.FileService.RemoveComicAsync(comic.Key);
                 // 从UI移除
                 _ = service.Cache.RemoveComic(comic.Key);
+                // remove comic record
+                await service.DataService.RemoveComicAsync(comic.Key);
+                await service.Cache.RefreshTagsAsync();
             }
         }
 
@@ -449,11 +483,11 @@ namespace ComicViewer
             }
         }
 
-        private async void EditTagsMenuItem_Click(object sender, RoutedEventArgs e)
+        private void EditTagsMenuItem_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                await Task.Run(()=>EditComicTags(comic));
+                EditComicTags(comic);
             }
         }
 
@@ -475,7 +509,7 @@ namespace ComicViewer
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                await Task.Run(()=>DeleteComicFile(comic));
+                await DeleteComicFile(comic);
             }
         }
 

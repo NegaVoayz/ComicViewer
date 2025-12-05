@@ -248,18 +248,18 @@ namespace ComicViewer.Services
         public void SelectTag(string tagKey)
         {
             _selectedTagsSet.Add(_tagsSource.Items.First(t => t.Key == tagKey));
-            _ = RefreshComicsByTagsAsync();
+            _ = RefreshComicsAsync();
         }
 
         public void DeselectTag(string tagKey)
         {
             _selectedTagsSet.Remove(_selectedTagsSet.Items.First(t => t.Key == tagKey));
-            _ = RefreshComicsByTagsAsync();
+            _ = RefreshComicsAsync();
         }
         public void ClearSelectedTags()
         {
             _selectedTagsSet.Clear();
-            _ = RefreshComicsByTagsAsync();
+            _ = RefreshComicsAsync();
         }
 
         #endregion
@@ -285,7 +285,17 @@ namespace ComicViewer.Services
             });
         }
 
-        public async Task RefreshComicsByTagsAsync()
+        public async Task RefreshTagsAsync()
+        {
+            var allTags = await service.DataService.GetAllTagsAsync();
+            _tagsSource.Edit(list =>
+            {
+                list.Clear();
+                list.AddRange(allTags);
+            });
+        }
+
+        public async Task RefreshComicsAsync()
         {
             var selectedTags = _selectedTagsSet.Items.Select(e => e.Key).ToList();
             if (!selectedTags.Any())

@@ -41,7 +41,7 @@ namespace ComicViewer.Services
             string title = fileName;
 
             // 计算MD5作为Key
-            string key = ComicExporter.CalculateMD5(title);
+            string key = ComicUtils.CalculateMD5(title);
 
             // 获取文件信息
             FileInfo fileInfo = new FileInfo(filePath);
@@ -63,6 +63,7 @@ namespace ComicViewer.Services
 
         public async Task<ComicData?> AddComicAsync(string filePath)
         {
+            filePath = ComicUtils.GetFileRealPath(filePath);
             ComicData comic;
             ComicMetadata? comicMetadata = null;
             if (Path.GetExtension(filePath) == ".cmc")
@@ -89,14 +90,25 @@ namespace ComicViewer.Services
             }
             if (service.DataService.FindComic(comic.Key)) return null;
 
-            service.FileService.AddComicTempPath(comic.Key, filePath);
-            await service.DataService.AddComicAsync(comic);
+            if (Path.GetExtension(filePath).Equals(".zip", StringComparison.OrdinalIgnoreCase)
+                && Path.GetPathRoot(filePath) == Path.GetPathRoot(Configs.GetFilePath()))
+            {
+                File.Move(filePath, ComicUtils.ComicNormalPath(comic.Key));
+                await service.DataService.AddComicAsync(comic);
+            }
+            else
+            {
+                service.FileService.AddComicTempPath(comic.Key, filePath);
+                await service.DataService.AddComicAsync(comic);
+                await service.FileLoader.AddMovingTask(comic.Key, filePath);
+            }
+            
             if (comicMetadata != null)
             {
                 await service.DataService.AddTagsToComicAsync(comic.Key, comicMetadata.GetTagKeys());
+                await service.Cache.RefreshTagsAsync();
             }
             await service.Cache.AddComic(comic);
-            await service.FileLoader.AddMovingTask(comic.Key, filePath);
             return comic;
         }
 
