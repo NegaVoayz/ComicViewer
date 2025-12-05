@@ -132,7 +132,6 @@ namespace ComicViewer.Services
         // 用于 UI 绑定的命令属性
         public ICommand SelectTagCommand { get; }
         public ICommand DeselectTagCommand { get; }
-        public ICommand ClearSearchCommand { get; }
 
         #endregion
     }

@@ -90,8 +90,8 @@ namespace ComicViewer.Services
             {
                 Key = ComicUtils.CalculateMD5(Title),
                 Title = Title,
-                CreatedTime = System?.CreatedTime,
-                LastAccess = System?.LastAccess,
+                CreatedTime = System?.CreatedTime ?? DateTime.Now,
+                LastAccess = System?.LastAccess ?? DateTime.Now,
                 Progress = System?.ReadProgress ?? 0,
                 Rating = System?.Rating ?? 0
             };
