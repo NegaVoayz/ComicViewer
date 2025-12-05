@@ -1496,6 +1496,14 @@
             "PrerequisitesLocation" = "2:1"
             "Url" = "8:"
             "ComponentsUrl" = "8:"
+                "Items"
+                {
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    {
+                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
+                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    }
+                }
             }
         }
         "Release"
@@ -4597,11 +4605,11 @@
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ComicViewer"
         "ProductCode" = "8:{47A4422F-FAA3-421B-907F-5C352BDFDC81}"
-        "PackageCode" = "8:{FF992A65-FEF9-4B84-85BA-BC8A98D96EF6}"
+        "PackageCode" = "8:{5B15F3BA-B39E-458B-941D-4D63F566FFFD}"
         "UpgradeCode" = "8:{8A7BBF86-5E3A-4DF5-A9AE-CC37CFEBD7DA}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
-        "RemovePreviousVersions" = "11:FALSE"
+        "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
         "ProductVersion" = "8:1.0.0"
@@ -4723,12 +4731,12 @@
             "Arguments" = "8:"
             "Description" = "8:"
             "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
+            "IconIndex" = "3:32512"
             "Transitive" = "11:FALSE"
             "Target" = "8:_9DCEEE5121D94559AAF7AFF84443190A"
             "Folder" = "8:_D527016E09F940E6B3E5C3638CDE968B"
             "WorkingFolder" = "8:_3F6E11B36EF94F06B0D04CC67256B487"
-            "Icon" = "8:_63287A1FFA8F45C097F2D613B716FFB4"
+            "Icon" = "8:_FF46B3C4A21E4560B73A57A4CE6BE1AE"
             "Feature" = "8:"
             }
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_EAF6893412644AAB9376964C0D33FCD1"
@@ -4737,17 +4745,17 @@
             "Arguments" = "8:"
             "Description" = "8:"
             "ShowCmd" = "3:1"
-            "IconIndex" = "3:0"
+            "IconIndex" = "3:32512"
             "Transitive" = "11:FALSE"
             "Target" = "8:_9DCEEE5121D94559AAF7AFF84443190A"
             "Folder" = "8:_459389D3D34041008A4847053B2F020B"
             "WorkingFolder" = "8:_3F6E11B36EF94F06B0D04CC67256B487"
-            "Icon" = "8:_63287A1FFA8F45C097F2D613B716FFB4"
+            "Icon" = "8:_FF46B3C4A21E4560B73A57A4CE6BE1AE"
             "Feature" = "8:"
             }
             "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_F33DE24B6F3D4B02A2DF8235415C2E7A"
             {
-            "Name" = "8:Uninstall"
+            "Name" = "8:ComicViewerUninstall"
             "Arguments" = "8:/X {47A4422F-FAA3-421B-907F-5C352BDFDC81}"
             "Description" = "8:"
             "ShowCmd" = "3:1"
@@ -5160,7 +5168,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_9DCEEE5121D94559AAF7AFF84443190A"
             {
-            "SourcePath" = "8:..\\ComicViewer\\obj\\x64\\Release\\net8.0-windows\\ComicViewer.dll"
+            "SourcePath" = "8:..\\ComicViewer\\obj\\x64\\Debug\\net8.0-windows\\ComicViewer.dll"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_3F6E11B36EF94F06B0D04CC67256B487"

@@ -2,22 +2,30 @@
 using ComicViewer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.Extensions.Options;
 using System.IO;
 
 namespace ComicViewer.Services
 {
     public class ComicDataService
     {
-        private readonly IDbContextFactory<ComicContext> _contextFactory = new PooledDbContextFactory<ComicContext>(
-            new DbContextOptionsBuilder<ComicContext>()
-            .UseSqlite($"Data Source={Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "data", "comics.db")}")
-            .Options);
+        private readonly IDbContextFactory<ComicContext> _contextFactory;
 
         private readonly ComicService service;
 
         public ComicDataService(ComicService service)
         {
             this.service = service;
+
+            string dbPath = Path.Combine(Configs.UserDataPath, "comics.db");
+
+            // 确保目录存在
+            Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+
+            _contextFactory = new PooledDbContextFactory<ComicContext>(
+                new DbContextOptionsBuilder<ComicContext>()
+                .UseSqlite($"Data Source={dbPath}")
+                .Options);
         }
 
         public async Task<TagModel> AddTagAsync(string tagName)

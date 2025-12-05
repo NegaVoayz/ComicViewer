@@ -8,15 +8,47 @@ namespace ComicViewer
 {
     public class Configs
     {
-        private static readonly IConfiguration configure = new ConfigurationBuilder()
-                                //设置配置项的根目录
-                                .SetBasePath(AppDomain.CurrentDomain.BaseDirectory)
-                                //添加当前目录下的Json文件
-                                //optional=配置项是否可选，false时如果
-                                //reloadOnChange配置文件改变时，是否重新读取
-                                .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                                //生成配置项
-                                .Build();
+        public static readonly string UserDataPath = Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+            "ComicViewer");
+
+        private static readonly string userConfigs =
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
+                        "ComicViewer", "userconfig.json");
+
+
+        private static readonly IConfiguration configure;
+        static Configs()
+        {
+            // 确保用户配置目录存在
+            var userConfigDir = Path.GetDirectoryName(userConfigs);
+            if (!Directory.Exists(userConfigDir))
+                Directory.CreateDirectory(userConfigDir);
+
+            if (!File.Exists(userConfigs))
+            {
+                InitializeUserConfig();
+            }
+
+            configure = new ConfigurationBuilder()
+                //设置配置项的根目录
+                .SetBasePath(UserDataPath)
+                //添加当前目录下的Json文件
+                //optional=配置项是否可选，false时如果
+                //reloadOnChange配置文件改变时，是否重新读取
+                .AddJsonFile("userconfig.json", optional: false, reloadOnChange: true)
+                //生成配置项
+                .Build();
+        }
+        private static void InitializeUserConfig()
+        {
+            var defaultConfig = new JsonObject
+            {
+                ["comic_path"] = "D:\\comics"  // 设置默认值
+            };
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            File.WriteAllText(userConfigs, JsonSerializer.Serialize(defaultConfig, options));
+        }
         public static IConfiguration Get()
         {
             return configure;
@@ -28,9 +60,8 @@ namespace ComicViewer
         public static bool SetFilePath(string newPath)
         {
             newPath = ComicUtils.GetFileRealPath(newPath);
-            var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
             // 读取现有的配置文件内容
-            var jsonContent = File.ReadAllText(path);
+            var jsonContent = File.ReadAllText(userConfigs);
             var jsonObject = JsonSerializer.Deserialize<JsonObject>(jsonContent);
 
             if (jsonObject == null)
@@ -48,7 +79,7 @@ namespace ComicViewer
             };
 
             var updatedJson = JsonSerializer.Serialize(jsonObject, options);
-            File.WriteAllText(path, updatedJson);
+            File.WriteAllText(userConfigs, updatedJson);
 
             return true;
         }
