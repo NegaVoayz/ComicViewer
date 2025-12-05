@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Configuration;
+﻿using ComicViewer.Services;
+using Microsoft.Extensions.Configuration;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -26,6 +27,7 @@ namespace ComicViewer
         }
         public static bool SetFilePath(string newPath)
         {
+            newPath = ComicUtils.GetFileRealPath(newPath);
             var path = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "appsettings.json");
             // 读取现有的配置文件内容
             var jsonContent = File.ReadAllText(path);

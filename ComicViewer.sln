@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.11.35222.181
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ComicViewer", "ComicViewer.csproj", "{5116FF6C-6A42-4BC4-871E-AFE08DF7DF1C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ComicViewer", ".\ComicViewer\ComicViewer.csproj", "{5116FF6C-6A42-4BC4-871E-AFE08DF7DF1C}"
+EndProject
+Project("{54435603-DBB4-11D2-8724-00A0C9A8B90C}") = "ComicViewerInstaller", ".\ComicViewerInstaller\ComicViewerInstaller.vdproj", "{2FE0DAAD-D09E-4433-AEE7-17579B296520}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{5116FF6C-6A42-4BC4-871E-AFE08DF7DF1C}.Release|Any CPU.Build.0 = Release|Any CPU
 		{5116FF6C-6A42-4BC4-871E-AFE08DF7DF1C}.Release|x64.ActiveCfg = Release|x64
 		{5116FF6C-6A42-4BC4-871E-AFE08DF7DF1C}.Release|x64.Build.0 = Release|x64
+		{2FE0DAAD-D09E-4433-AEE7-17579B296520}.Debug|Any CPU.ActiveCfg = Debug
+		{2FE0DAAD-D09E-4433-AEE7-17579B296520}.Debug|x64.ActiveCfg = Debug
+		{2FE0DAAD-D09E-4433-AEE7-17579B296520}.Release|Any CPU.ActiveCfg = Release
+		{2FE0DAAD-D09E-4433-AEE7-17579B296520}.Release|x64.ActiveCfg = Release
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
