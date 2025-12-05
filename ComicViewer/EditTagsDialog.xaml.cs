@@ -29,7 +29,7 @@ namespace ComicViewer
             _comic = comic;
             _viewModel = _cache.ViewModel;
             DataContext = _viewModel;
-            SearchTagDebouncer = new(500, service.Cache.SetSearchTagName);
+            SearchTagDebouncer = new(500, _cache.SetSearchTagName);
 
             Loaded += async (s, e) => await _cache.InitializeAsync();
 

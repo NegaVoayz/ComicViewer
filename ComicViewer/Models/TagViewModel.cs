@@ -7,7 +7,6 @@ namespace ComicViewer.Models
     {
         public ReadOnlyObservableCollection<TagModel> UnselectedTags { get; }
         public ReadOnlyObservableCollection<TagModel> SelectedTags { get; }
-        public ObservableObject<string> CurrentSaveDirectory { get; } = Configs.GetFilePath();
 
         public TagViewModel(
             ReadOnlyObservableCollection<TagModel> unselectedTags,

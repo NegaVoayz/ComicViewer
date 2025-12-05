@@ -55,7 +55,7 @@ namespace ComicViewer.Services
         public async Task InitializeAsync()
         {
             var tags = await service.DataService.GetAllTagsAsync();
-            var comicTags = await service.DataService.GetTagsOfComic(comicKey);
+            var comicTagKeys = (await service.DataService.GetTagsOfComic(comicKey)).Select(e => e.Key).ToHashSet();
 
             // 使用 Edit() 进行批量操作，避免多次事件触发
             _tagsSource.Edit(list =>
@@ -64,10 +64,12 @@ namespace ComicViewer.Services
                 list.AddRange(tags);
             });
 
+            var selectedTags = tags.Where(e => comicTagKeys.Contains(e.Key));
+
             _selectedTagsSet.Edit(list =>
             {
                 list.Clear();
-                list.AddRange(comicTags);
+                list.AddRange(selectedTags);
             });
         }
 
@@ -92,11 +94,15 @@ namespace ComicViewer.Services
 
         public void SelectTag(string tagKey)
         {
-            _selectedTagsSet.Add(_tagsSource.Items.First(t => t.Key == tagKey));
+            TagModel tag = _tagsSource.Items.First(t => t.Key == tagKey);
+            tag.Count++;
+            _selectedTagsSet.Add(tag);
         }
 
         public void DeselectTag(string tagKey)
         {
+            TagModel tag = _tagsSource.Items.First(e => e.Key == tagKey);
+            tag.Count--;
             _selectedTagsSet.Remove(_selectedTagsSet.Items.First(t => t.Key == tagKey));
         }
 

@@ -4,7 +4,7 @@ using System.ComponentModel.DataAnnotations.Schema;
 
 namespace ComicViewer.Models
 {
-    public class TagModel
+    public class TagModel : IEquatable<TagModel>
     {
         [Key]
         [StringLength(32)] // Text(32) 对应 MD5 长度
@@ -20,5 +20,13 @@ namespace ComicViewer.Models
         public int Count { get; set; }
 
         public virtual ICollection<ComicTag> ComicTags { get; set; } = null!;
+
+        public bool Equals(TagModel? other)
+        {
+            return Key == other?.Key;
+        }
+
+        public override bool Equals(object? obj) => Equals(obj as TagModel);
+        public override int GetHashCode() => Key.GetHashCode();
     }
 }
