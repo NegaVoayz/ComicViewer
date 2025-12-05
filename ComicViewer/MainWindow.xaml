@@ -2,6 +2,8 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Height="800" Width="1200"
+        Title="Comic Viewer"
+        Icon="Resources/kris.ico"
         Background="#FAFAFA">
 
     <Window.Resources>
@@ -349,17 +351,6 @@
                         <ComboBoxItem>标题 Z-A</ComboBoxItem>
                         <ComboBoxItem>评分最高</ComboBoxItem>
                     </ComboBox>
-
-                    <!-- 活动筛选标签（动态显示） -->
-                    <ItemsControl x:Name="ActiveFilterChips"
-                                  ItemsSource="{Binding ActiveFilters}"
-                                  Margin="10,0">
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <WrapPanel Orientation="Horizontal"/>
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                    </ItemsControl>
                 </StackPanel>
 
                 <!-- 右侧：添加按钮 -->
@@ -593,8 +584,7 @@
                                     Padding="12,0"
                                     FontSize="12"
                                     Style="{StaticResource TextButtonStyle}"
-                                    Click="ClearFilters_Click"
-                                    IsEnabled="{Binding HasActiveFilters}"/>
+                                    Click="ClearFilters_Click"/>
                         </StackPanel>
                     </Border>
                 </Grid>
