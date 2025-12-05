@@ -1,8 +1,11 @@
 ﻿namespace ComicViewer.Services
 {
     using System.Collections.Generic;
+    using System.Diagnostics.CodeAnalysis;
 
     public class LRUCache<TKey, TValue>
+        where TKey : notnull
+        where TValue : notnull
     {
         private readonly int _capacity;
         private readonly Dictionary<TKey, LinkedListNode<KeyValuePair<TKey, TValue>>> _cache;
@@ -16,16 +19,16 @@
             _accessQueue = new();
         }
 
-        public bool TryGet(TKey key, out TValue value)
+        public bool TryGet(TKey key, [NotNullWhen(true)] out TValue? value)
         {
             if (_cache.TryGetValue(key, out var node))
             {
                 lock (_lock)
                 {
                     // 记录访问
-                    value = node.Value.Value;
                     _accessQueue.Remove(node);
                     _accessQueue.AddLast(node);
+                    value = node.Value.Value;
                 }
                 return true;
             }
@@ -48,7 +51,7 @@
                 if (_cache.Count >= _capacity)
                 {
                     // 尝试移除最久未使用的
-                    _cache.Remove(_accessQueue.First.Value.Key, out _);
+                    _cache.Remove(_accessQueue.First!.Value.Key, out _);
                     _accessQueue.RemoveFirst();
                 }
 

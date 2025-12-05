@@ -30,6 +30,10 @@ namespace ComicViewer.Services
                     return;
                 }
                 var comicData = service.DataService.GetComicData(comic.Key);
+                if (comicData == null)
+                {
+                    return;
+                }
 
                 // if just export.
                 if (Path.GetExtension(destinationPath) == ".zip")
@@ -73,13 +77,13 @@ namespace ComicViewer.Services
     public class ComicMetadata
     {
         [JsonPropertyName("version")]
-        public string Version { get; set; }
+        public required string Version { get; set; }
         [JsonPropertyName("title")]
-        public string Title { get; set; }
+        public required string Title { get; set; }
         [JsonPropertyName("tags")]
-        public List<string> Tags { get; set; }
+        public required List<string> Tags { get; set; }
         [JsonPropertyName("system")]
-        public SystemInfo System { get; set; }
+        public required SystemInfo System { get; set; }
         public ComicData ToComicData()
         {
             return new ComicData

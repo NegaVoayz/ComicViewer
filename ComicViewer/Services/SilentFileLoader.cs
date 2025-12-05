@@ -83,7 +83,7 @@ namespace ComicViewer.Services
                 }
                 return; // no move
             }
-            _ = CancelAndStartNewTaskAsync(
+            await CancelAndStartNewTaskAsync(
                 new MovingFileModel
                 {
                     Key = model.Key,
@@ -114,7 +114,7 @@ namespace ComicViewer.Services
                 }
                 catch (OperationCanceledException)
                 { /*任务被取消*/ }
-                catch (Exception ex)
+                catch (Exception)
                 { /* 任务失败 */ }
                 finally
                 {
@@ -208,7 +208,7 @@ namespace ComicViewer.Services
                         await entryStream.CopyToAsync(memoryStream, cancellation);
                         memoryStream.Position = 0;
 
-                        await channel.Writer.WriteAsync((entry.Key, memoryStream), cancellation);
+                        await channel.Writer.WriteAsync((entry.Key!, memoryStream), cancellation);
                     }
 
                     channel.Writer.Complete();
@@ -233,7 +233,7 @@ namespace ComicViewer.Services
         {
             using var archive = TarArchive.Open(model.SourcePath);
 
-            var tarEntry = archive.Entries.FirstOrDefault(e =>
+            var tarEntry = archive.Entries.FirstOrDefault(e => e.Key != null &&
                 e.Key.Equals("comic.zip", StringComparison.OrdinalIgnoreCase));
 
             if (tarEntry == null || tarEntry.IsDirectory) return;

@@ -63,7 +63,7 @@ namespace ComicViewer.Services
             {
                 using var archive = TarArchive.Open(filePath);
 
-                var tarEntry = archive.Entries.FirstOrDefault(e =>
+                var tarEntry = archive.Entries.FirstOrDefault(e => e.Key != null &&
                     e.Key.Equals("metadata.json", StringComparison.OrdinalIgnoreCase));
                 if (tarEntry == null || tarEntry.IsDirectory) return null;
 

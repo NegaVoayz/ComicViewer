@@ -13,19 +13,19 @@ namespace ComicViewer.Models
         [Key]
         [StringLength(32)] // Text(32) 对应 MD5 长度
         [Comment("MD5主键")]
-        public string Key { get; set; }
+        public required string Key { get; set; }
 
         [Column("Title", TypeName = "TEXT")]
         [Comment("漫画标题")]
-        public string Title { get; set; }
+        public required string Title { get; set; }
 
         [Column("CreatedTime", TypeName = "DATETIME")]
         [Comment("创建时间")]
-        public DateTime? CreatedTime { get; set; }
+        public DateTime CreatedTime { get; set; }
 
         [Column("LastAccess", TypeName = "DATETIME")]
         [Comment("最后访问时间")]
-        public DateTime? LastAccess { get; set; }
+        public DateTime LastAccess { get; set; }
 
         [Column("Progress", TypeName = "INTEGER")]
         [Comment("阅读进度")]
@@ -36,13 +36,12 @@ namespace ComicViewer.Models
         public int Rating { get; set; }
 
         [Comment("漫画标签关联")]
-        public virtual ICollection<ComicTag> ComicTags { get; set; }
+        public virtual ICollection<ComicTag> ComicTags { get; set; } = null!;
 
         public ComicModel ToComicModel(ComicService service)
         {
-            return new ComicModel
+            return new ComicModel(service)
             {
-                Service = service,
                 Title = Title,
                 Progress = Progress,
                 Key = Key,
@@ -72,23 +71,23 @@ namespace ComicViewer.Models
     }
     public class ComicModel : INotifyPropertyChanged
     {
-        private ComicService service;
-        public string Key { get; set; }
-        private string _title;
-        private ObservableTask<string> _tagsTask;
-        private string _tagsPreview;
+        private readonly ComicService service;
+        public required string Key { get; set; }
+        private string _title = null!;
+        private ObservableTask<string>? _tagsTask;
+        private string? _tagsPreview;
         private int _progress;
         private int _length = 0;
-        private ObservableTask<int> _lengthTask;
-        private BitmapImage _coverImage;
-        private ObservableTask<BitmapImage> _coverTask;
+        private ObservableTask<int>? _lengthTask;
+        private BitmapImage? _coverImage;
+        private ObservableTask<BitmapImage>? _coverTask;
         public int Rating;
-        public DateTime? CreatedTime;
-        public DateTime? LastAccess;
+        public DateTime CreatedTime;
+        public DateTime LastAccess;
 
-        public ComicService Service
+        public ComicModel(ComicService service)
         {
-            set => service = value;
+            this.service = service;
         }
 
         public string Title
@@ -105,8 +104,7 @@ namespace ComicViewer.Models
                 if (_tagsPreview == null && _tagsTask == null)
                 {
                     // 开始加载，但不等待
-                    _tagsTask = new ObservableTask<string>(service.DataService.GetTagsPreviewOfComic(Key));
-                    _tagsTask.PropertyChanged += OnTagsTaskPropertyChanged;
+                    RefreshTags();
                 }
                 return _tagsPreview ?? "N/A";
             }
@@ -155,11 +153,17 @@ namespace ComicViewer.Models
             private set => SetField(ref _coverImage, value);
         }
 
-        private void OnTagsTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
+        public void RefreshTags()
+        {
+            _tagsTask = new ObservableTask<string>(service.DataService.GetTagsPreviewOfComic(Key));
+            _tagsTask.PropertyChanged += OnTagsTaskPropertyChanged;
+        }
+
+        private void OnTagsTaskPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ObservableTask<string>.Result))
             {
-                if (_tagsTask.Result != null)
+                if (_tagsTask?.Result != null)
                 {
                     TagsPreview = _tagsTask.Result;
                     OnPropertyChanged();
@@ -167,22 +171,22 @@ namespace ComicViewer.Models
                 }
             }
         }
-        private void OnCoverTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnCoverTaskPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ObservableTask<BitmapImage>.Result))
             {
-                if (_coverTask.Result != null)
+                if (_coverTask?.Result != null)
                 {
                     CoverImage = _coverTask.Result;
                     OnPropertyChanged();
                 }
             }
         }
-        private void OnLengthTaskPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void OnLengthTaskPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName == nameof(ObservableTask<int>.Result))
             {
-                if (_lengthTask.Result != 0)
+                if (_lengthTask != null && _lengthTask.Result != 0)
                 {
                     Length = _lengthTask.Result;
                     OnPropertyChanged();
@@ -190,14 +194,14 @@ namespace ComicViewer.Models
             }
         }
 
-        public event PropertyChangedEventHandler PropertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged;
 
-        public virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        public virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
 
-        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string propertyName = null)
+        protected bool SetField<T>(ref T field, T value, [CallerMemberName] string? propertyName = null)
         {
             if (EqualityComparer<T>.Default.Equals(field, value)) return false;
             field = value;
@@ -211,7 +215,7 @@ namespace ComicViewer.Models
             {
                 var images = await service.FileService.LoadImageEntriesAsync(this);
                 var coverName = images.First();
-                return await service.FileService.LoadImageAsync(this, coverName);
+                return await service.FileService.LoadImageAsync(this, coverName) ?? LoadPlaceholderImage();
             });
         }
 
@@ -219,7 +223,7 @@ namespace ComicViewer.Models
         {
             // 从应用程序资源加载占位图
             var uri = new Uri("pack://application:,,,/Resources/placeholder.jpg");
-            var bitmap = new BitmapImage();
+            BitmapImage bitmap = new BitmapImage();
             bitmap.BeginInit();
             bitmap.UriSource = uri;
             bitmap.CacheOption = BitmapCacheOption.OnLoad;

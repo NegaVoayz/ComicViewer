@@ -60,6 +60,11 @@ namespace ComicViewer
 
         private void AddTagButton_Click(object sender, RoutedEventArgs e)
         {
+            AddTag();
+        }
+
+        private void AddTag()
+        {
             var newTagName = NewTagTextBox.Text.Trim();
             if (string.IsNullOrWhiteSpace(newTagName))
             {
@@ -101,7 +106,7 @@ namespace ComicViewer
         {
             if (e.Key == Key.Enter && AddTagButton.IsEnabled)
             {
-                AddTagButton_Click(null, null);
+                AddTag();
                 e.Handled = true;
             }
         }

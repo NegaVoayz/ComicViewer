@@ -21,9 +21,8 @@ namespace ComicViewer
         static Configs()
         {
             // 确保用户配置目录存在
-            var userConfigDir = Path.GetDirectoryName(userConfigs);
-            if (!Directory.Exists(userConfigDir))
-                Directory.CreateDirectory(userConfigDir);
+            if (!Directory.Exists(UserDataPath))
+                Directory.CreateDirectory(UserDataPath);
 
             if (!File.Exists(userConfigs))
             {

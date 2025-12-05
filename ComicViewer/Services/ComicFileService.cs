@@ -10,9 +10,9 @@ namespace ComicViewer.Services
 {
     class Entry
     {
-        public string Path { get; set; }
+        public required string Path { get; set; }
         public int UseCount { get; set; }
-        public Func<Entry, Task> OnRemove { get; set; } = async (Entry) => { };
+        public Func<Entry, Task> OnRemove { get; set; } = _ => Task.CompletedTask;
     }
     public class ComicFileService
     {
@@ -40,7 +40,7 @@ namespace ComicViewer.Services
                 }
             });
         }
-        private static async Task DoNothing(Entry entry) { }
+        private static readonly Func<Entry, Task> DoNothing = _ => Task.CompletedTask;
 
         public bool AddComicTempPath(string Key, string path)
         {
@@ -97,7 +97,7 @@ namespace ComicViewer.Services
         {
             lock (_lock)
             {
-                Entry entry;
+                Entry? entry;
                 foreach (var dict in new Dictionary<string, Entry>[] { comicNormalPathDict, comicTempPathDict })
                 {
                     if (dict.TryGetValue(Key, out entry))
@@ -116,7 +116,7 @@ namespace ComicViewer.Services
         {
             lock (_lock)
             {
-                Entry entry;
+                Entry? entry;
                 if (comicNormalPathDict.TryGetValue(Key, out entry) && entry.Path == path)
                 {
                     entry.UseCount--;
@@ -233,7 +233,7 @@ namespace ComicViewer.Services
 
         private List<string> LoadImageEntriesFromCmcStreaming(string cmcPath)
         {
-            return GetComicZipInfo(cmcPath, true).fileNames
+            return GetComicZipInfo(cmcPath, true).fileNames!
                 .OrderBy(e => e, new NaturalStringComparer())
                 .ToList();
         }
@@ -251,12 +251,12 @@ namespace ComicViewer.Services
 
         private bool IsImageFile(string fileName)
         {
-            var ext = System.IO.Path.GetExtension(fileName).ToLower();
+            var ext = Path.GetExtension(fileName).ToLower();
             return ext == ".jpg" || ext == ".jpeg" || ext == ".png" ||
                    ext == ".bmp" || ext == ".gif" || ext == ".webp";
         }
 
-        public async Task<BitmapImage> LoadImageAsync(ComicModel comic, string entryName)
+        public async Task<BitmapImage?> LoadImageAsync(ComicModel comic, string entryName)
         {
             return await Task.Run(async () =>
             {
@@ -264,7 +264,7 @@ namespace ComicViewer.Services
 
                 try
                 {
-                    if (System.IO.Path.GetExtension(archivePath).Equals(".cmc", StringComparison.OrdinalIgnoreCase))
+                    if (Path.GetExtension(archivePath).Equals(".cmc", StringComparison.OrdinalIgnoreCase))
                     {
                         // 处理.cmc文件（tar包里的漫画包）
                         return await LoadImageFromCmcAsync(archivePath, entryName);
@@ -282,7 +282,7 @@ namespace ComicViewer.Services
             });
         }
 
-        private async Task<BitmapImage> LoadImageFromCmcAsync(string cmcPath, string entryName)
+        private async Task<BitmapImage?> LoadImageFromCmcAsync(string cmcPath, string entryName)
         {
             using var cmcArchive = ArchiveFactory.Open(cmcPath);
 
@@ -292,7 +292,7 @@ namespace ComicViewer.Services
                     e.Key.Equals("comic.zip", StringComparison.OrdinalIgnoreCase));
 
             if (comicArchiveEntry == null)
-                throw new InvalidDataException("CMC文件中未找到漫画压缩包");
+                return null;
 
             // 使用 Reader 而不是 Archive 来避免缓存整个ZIP
             using var comicStream = comicArchiveEntry.OpenEntryStream();
@@ -312,7 +312,7 @@ namespace ComicViewer.Services
                 }
             }
 
-            throw new FileNotFoundException($"图片不存在: {entryName}");
+            return null;
         }
 
         private async Task<BitmapImage> LoadImageFromRegularArchiveAsync(string archivePath, string entryName)
@@ -330,7 +330,7 @@ namespace ComicViewer.Services
 
         private BitmapImage CreateBitmapImage(Stream stream)
         {
-            var bitmap = new BitmapImage();
+            BitmapImage bitmap = new();
             bitmap.BeginInit();
             bitmap.StreamSource = stream;
             bitmap.CacheOption = BitmapCacheOption.OnLoad;
@@ -354,7 +354,7 @@ namespace ComicViewer.Services
             return comicExtensions.Contains(ext);
         }
 
-        public (int fileCount, List<string> fileNames) GetComicZipInfo(string cmcPath,
+        public (int fileCount, List<string>? fileNames) GetComicZipInfo(string cmcPath,
         bool includeNames = false)
         {
             using var tarArchive = ArchiveFactory.Open(cmcPath);
@@ -368,7 +368,7 @@ namespace ComicViewer.Services
                 return (0, new List<string>());
 
             int fileCount = 0;
-            List<string> fileNames = includeNames ? new List<string>() : null;
+            List<string>? fileNames = includeNames ? new List<string>() : null;
 
             // 使用缓冲流优化读取性能
             using var rawZipStream = comicZipEntry.OpenEntryStream();
@@ -390,7 +390,7 @@ namespace ComicViewer.Services
                 {
                     fileCount++;
 
-                    if (includeNames)
+                    if (fileNames != null && reader.Entry.Key != null)
                     {
                         fileNames.Add(reader.Entry.Key);
                     }
@@ -432,8 +432,10 @@ namespace ComicViewer.Services
         [System.Runtime.InteropServices.DllImport("shlwapi.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
         private static extern int StrCmpLogicalW(string psz1, string psz2);
 
-        public int Compare(string x, string y)
+        public int Compare(string? x, string? y)
         {
+            if (x == null || y == null)
+                return 0;
             return StrCmpLogicalW(x, y);
         }
     }

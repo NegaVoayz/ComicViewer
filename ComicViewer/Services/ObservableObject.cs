@@ -11,7 +11,7 @@
         /// <typeparam name="T">被包装的类型</typeparam>
         public class ObservableObject<T> : INotifyPropertyChanged
         {
-            private T _value;
+            private T _value = default!;
 
             /// <summary>
             /// 包装的值
@@ -47,9 +47,9 @@
                 return Value?.ToString() ?? string.Empty;
             }
 
-            public event PropertyChangedEventHandler PropertyChanged;
+            public event PropertyChangedEventHandler? PropertyChanged;
 
-            protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
+            protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
             {
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
             }

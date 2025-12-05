@@ -10,11 +10,11 @@ namespace ComicViewer.Services
     public class Debouncer
     {
         private DispatcherTimer _timer;
-        private Action _action;
+        private Action _action = null!;
         private readonly Dispatcher _dispatcher;
         private readonly int _delayMilliseconds;
 
-        public Debouncer(int delayMilliseconds, Action? action = default, Dispatcher dispatcher = null)
+        public Debouncer(int delayMilliseconds, Action? action = default, Dispatcher? dispatcher = null)
         {
             _delayMilliseconds = delayMilliseconds;
             if (action != null)
@@ -35,7 +35,7 @@ namespace ComicViewer.Services
             _timer.Start();
         }
 
-        private void OnTimerTick(object sender, EventArgs e)
+        private void OnTimerTick(object? sender, EventArgs e)
         {
             _timer.Stop();
             _action?.Invoke();
@@ -53,7 +53,7 @@ namespace ComicViewer.Services
     /// </summary>
     public class AsyncDebouncer
     {
-        private CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource? _cancellationTokenSource;
         private readonly int _delayMilliseconds;
 
         public AsyncDebouncer(int delayMilliseconds)
@@ -104,17 +104,20 @@ namespace ComicViewer.Services
     public class Debouncer<T>
     {
         private DispatcherTimer _timer;
-        private Action<T> _action;
-        private T _lastParameter;
+        private Action<T>? _action = null!;
+        private T _lastParameter = default!;
         private readonly Dispatcher _dispatcher;
         private readonly int _delayMilliseconds;
 
-        public Debouncer(int delayMilliseconds, Action<T>? action = default, T parameter = default, Dispatcher dispatcher = null)
+        public Debouncer(int delayMilliseconds, Action<T>? action = default, T? parameter = default, Dispatcher? dispatcher = null)
         {
             _delayMilliseconds = delayMilliseconds;
             if (action != null)
                 _action = action;
-            _lastParameter = parameter;
+            if(parameter != null)
+            {
+                _lastParameter = parameter;
+            }
             _dispatcher = dispatcher ?? Application.Current.Dispatcher;
             _timer = new DispatcherTimer
             {
@@ -123,7 +126,7 @@ namespace ComicViewer.Services
             _timer.Tick += OnTimerTick;
         }
 
-        public void Debounce(T parameter, Action<T> action = default)
+        public void Debounce(T parameter, Action<T>? action = default)
         {
             _lastParameter = parameter;
             if (action != null)
@@ -132,7 +135,7 @@ namespace ComicViewer.Services
             _timer.Start();
         }
 
-        private void OnTimerTick(object sender, EventArgs e)
+        private void OnTimerTick(object? sender, EventArgs e)
         {
             _timer.Stop();
             _action?.Invoke(_lastParameter);
@@ -150,11 +153,11 @@ namespace ComicViewer.Services
     /// </summary>
     public class AsyncDebouncer<T>
     {
-        private CancellationTokenSource _cancellationTokenSource;
+        private CancellationTokenSource? _cancellationTokenSource;
         private readonly int _delayMilliseconds;
-        private T _lastParameter;
+        private T? _lastParameter = default!;
 
-        public AsyncDebouncer(int delayMilliseconds, T parameter = default)
+        public AsyncDebouncer(int delayMilliseconds, T? parameter = default)
         {
             _delayMilliseconds = delayMilliseconds;
             _lastParameter = parameter;

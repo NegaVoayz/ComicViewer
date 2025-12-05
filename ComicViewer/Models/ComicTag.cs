@@ -9,17 +9,19 @@ namespace ComicViewer.Models
         [Column("ComicKey", TypeName = "TEXT")]
         [StringLength(32)]
         [Comment("漫画MD5外键")]
-        public string ComicKey { get; set; }
+        [Required]
+        public required string ComicKey { get; set; }
 
         [Column("TagKey", TypeName = "TEXT")]
         [StringLength(32)]
         [Comment("标签MD5外键")]
-        public string TagKey { get; set; }
+        [Required]
+        public required string TagKey { get; set; }
 
         [ForeignKey("ComicKey")]
-        public virtual ComicData Comic { get; set; }
+        public virtual ComicData Comic { get; set; } = null!;
 
         [ForeignKey("TagKey")]
-        public virtual TagModel Tag { get; set; }
+        public virtual TagModel Tag { get; set; } = null!;
     }
 }

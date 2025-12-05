@@ -130,16 +130,6 @@
                             HorizontalAlignment="Right"
                             VerticalAlignment="Center"
                             Margin="0,0,20,0">
-                    <ComboBox x:Name="ZoomComboBox"
-                              Width="100" Height="30"
-                              SelectedIndex="2">
-                        <ComboBoxItem>适应宽度</ComboBoxItem>
-                        <ComboBoxItem>适应高度</ComboBoxItem>
-                        <ComboBoxItem>原始大小</ComboBoxItem>
-                        <ComboBoxItem>50%</ComboBoxItem>
-                        <ComboBoxItem>100%</ComboBoxItem>
-                        <ComboBoxItem>150%</ComboBoxItem>
-                    </ComboBox>
 
                     <ToggleButton x:Name="TwoPageModeToggle"
                                   Content="双页模式"

@@ -2,7 +2,6 @@
 using ComicViewer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using Microsoft.Extensions.Options;
 using System.IO;
 
 namespace ComicViewer.Services
@@ -20,7 +19,7 @@ namespace ComicViewer.Services
             string dbPath = Path.Combine(Configs.UserDataPath, "comics.db");
 
             // 确保目录存在
-            Directory.CreateDirectory(Path.GetDirectoryName(dbPath));
+            Directory.CreateDirectory(Configs.UserDataPath);
 
             _contextFactory = new PooledDbContextFactory<ComicContext>(
                 new DbContextOptionsBuilder<ComicContext>()

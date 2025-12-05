@@ -16,11 +16,7 @@ namespace ComicViewer
     public partial class MainWindow : Window
     {
         private readonly ComicService service;
-        private ComicViewModel _viewModel;
-        private bool _isLoading;
-        private int _visibleStartIndex = 0;
-        private int _visibleEndIndex = 50; // 初始加载50个
-
+        private readonly ComicViewModel _viewModel;
 
         public MainWindow()
         {
@@ -147,7 +143,7 @@ namespace ComicViewer
                 return;
 
             var selectedItem = (ComboBoxItem)SortCombo.SelectedItem;
-            var sortMethod = selectedItem.Content.ToString();
+            var sortMethod = selectedItem.Content.ToString()!;
 
             // 对Comics集合进行排序
             SortComics(sortMethod);
@@ -250,8 +246,7 @@ namespace ComicViewer
                     if (dialog.Changed == true)
                     {
                         // 更新漫画标签
-                        comic.TagsPreview = null;
-                        _ = comic.TagsPreview;
+                        comic.RefreshTags();
 
                         // 显示反馈
                         ShowStatusMessage($"已更新《{comic.Title}》的标签", 2000);
@@ -528,7 +523,7 @@ namespace ComicViewer
         }
 
         Debouncer<string> SearchNameDebouncer;
-        private async void OnNameSearchChanged(object sender, TextChangedEventArgs e)
+        private void OnNameSearchChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox MainSearchBox)
             {
@@ -537,7 +532,7 @@ namespace ComicViewer
         }
 
         Debouncer<string> SearchTagDebouncer;
-        private async void OnTagSearchChanged(object sender, TextChangedEventArgs e)
+        private void OnTagSearchChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox TagSearchBox)
             {

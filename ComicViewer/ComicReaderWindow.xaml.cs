@@ -166,13 +166,17 @@ namespace ComicViewer
         private async Task LoadTwoPagesAsync()
         {
             // 创建两个加载任务，但不立即 await
-            Task<BitmapImage> leftTask = null;
-            Task<BitmapImage> rightTask = null;
+            Task<BitmapImage?> leftTask;
+            Task<BitmapImage?> rightTask;
 
             // 启动左页加载
             if (_currentPageIndex < _imageEntries.Count)
             {
                 leftTask = service.FileService.LoadImageAsync(_comic, _imageEntries[_currentPageIndex]);
+            }
+            else
+            {
+                leftTask = Task.FromResult<BitmapImage?>(null);
             }
 
             // 启动右页加载
@@ -180,11 +184,15 @@ namespace ComicViewer
             {
                 rightTask = service.FileService.LoadImageAsync(_comic, _imageEntries[_currentPageIndex + 1]);
             }
+            else
+            {
+                rightTask = Task.FromResult<BitmapImage?>(null);
+            }
 
             // 等待两个任务都完成
             await Task.WhenAll(
-                leftTask ?? Task.FromResult<BitmapImage>(null),
-                rightTask ?? Task.FromResult<BitmapImage>(null)
+                leftTask,
+                rightTask
             );
 
             // 一次性更新UI
