@@ -25,35 +25,6 @@ namespace ComicViewer.Services
             }
         }
 
-        private ComicData CreateComicDataFromFile(string filePath)
-        {
-            // 获取文件名（不包含路径和扩展名）
-            string fileName = Path.GetFileNameWithoutExtension(filePath);
-
-            // 使用文件名作为Title
-            string title = fileName;
-
-            // 计算MD5作为Key
-            string key = ComicUtils.CalculateMD5(title);
-
-            // 获取文件信息
-            FileInfo fileInfo = new FileInfo(filePath);
-
-            return new ComicData
-            {
-                Key = key,
-                Title = title,
-                // 从文件系统获取时间信息
-                CreatedTime = fileInfo.CreationTime,
-                LastAccess = fileInfo.LastAccessTime,
-                // 设置默认值
-                Progress = 0,           // 未开始阅读
-                Rating = 0,             // 未评分
-                                        // 集合属性可以初始化为空列表
-                ComicTags = new List<ComicTag>()
-            };
-        }
-
         public async Task<ComicData?> AddComicAsync(string filePath)
         {
             filePath = ComicUtils.GetFileRealPath(filePath);
@@ -73,14 +44,14 @@ namespace ComicViewer.Services
 
                 comicMetadata = JsonSerializer.Deserialize<ComicMetadata>(data);
                 if (comicMetadata == null) return null;
-
-                comic = comicMetadata.ToComicData();
-                await service.DataService.AddTagsAsync(comicMetadata.Tags);
             }
             else
             {
-                comic = CreateComicDataFromFile(filePath);
+                comicMetadata = ComicUtils.CreateComicDataFromFilePath(filePath);
             }
+            comic = comicMetadata.ToComicData();
+            await service.DataService.AddTagsAsync(comicMetadata.Tags);
+
             if (service.DataService.FindComic(comic.Key)) return null;
 
             if (Path.GetExtension(filePath).Equals(".zip", StringComparison.OrdinalIgnoreCase)

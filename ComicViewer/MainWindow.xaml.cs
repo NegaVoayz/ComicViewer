@@ -280,7 +280,27 @@ namespace ComicViewer
 
             if (saveDialog.ShowDialog() == true)
             {
-                await service.Exporter.CreateSharePackageAsync(comic, saveDialog.FileName);
+                string? directory = Path.GetDirectoryName(saveDialog.FileName);
+                string fileName = Path.GetFileNameWithoutExtension(saveDialog.FileName);
+                string fileExt = Path.GetExtension(saveDialog.FileName);
+
+                string fullPath = saveDialog.FileName;
+                if(fileName == comic.Title && fileExt == ".zip")
+                {
+                    var tags = (await service.DataService.GetTagsOfComic(comic.Key))
+                        .Select(e => e.Name);
+                    string processedName = ComicUtils.GetCombinedName(comic.Title, tags);
+                    processedName = $"{processedName}.zip";
+                    if(directory != null)
+                    {
+                        fullPath = Path.Combine(directory, processedName);
+                    }
+                    else
+                    {
+                        fullPath = processedName;
+                    }
+                }
+                await service.Exporter.CreateSharePackageAsync(comic, fullPath);
             }
         }
 

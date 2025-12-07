@@ -39,6 +39,7 @@ namespace ComicViewer.Services
                 if (Path.GetExtension(destinationPath) == ".zip")
                 {
                     await Task.Run(() => File.Copy(sourceFilePath, destinationPath, true));
+                    MessageBox.Show("分享包创建成功！");
                     return;
                 }
 
@@ -64,8 +65,8 @@ namespace ComicViewer.Services
                     // 确保写入完成
                     tarWriter.Dispose();
                     await tarStream.FlushAsync();
+                    MessageBox.Show("分享包创建成功！");
                 });
-                MessageBox.Show("分享包创建成功！");
             }
             finally
             {
