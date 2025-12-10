@@ -1,6 +1,6 @@
 ﻿using System.Windows.Input;
 
-namespace ComicViewer.Services
+namespace ComicViewer.Infrastructure
 {
     public class RelayCommand<T> : ICommand
     {

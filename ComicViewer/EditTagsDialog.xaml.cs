@@ -1,4 +1,5 @@
-﻿using ComicViewer.Models;
+﻿using ComicViewer.Infrastructure;
+using ComicViewer.Models;
 using ComicViewer.Services;
 using System.Windows;
 using System.Windows.Controls;

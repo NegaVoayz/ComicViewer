@@ -1,4 +1,5 @@
-﻿using ComicViewer.Models;
+﻿using ComicViewer.Infrastructure;
+using ComicViewer.Models;
 using DynamicData;
 using DynamicData.Binding;
 using ReactiveUI;

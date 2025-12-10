@@ -1,4 +1,5 @@
-﻿using ComicViewer.Services;
+﻿using ComicViewer.Infrastructure;
+using ComicViewer.Services;
 using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;

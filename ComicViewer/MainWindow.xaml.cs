@@ -1,4 +1,5 @@
-﻿using ComicViewer.Models;
+﻿using ComicViewer.Infrastructure;
+using ComicViewer.Models;
 using ComicViewer.Services;
 using Microsoft.Win32;
 using System.Diagnostics;
