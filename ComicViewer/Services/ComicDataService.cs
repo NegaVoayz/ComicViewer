@@ -27,7 +27,7 @@ namespace ComicViewer.Services
                 .Options);
         }
 
-        public async Task<TagModel> AddTagAsync(string tagName)
+        public async Task<TagData> AddTagAsync(string tagName)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -39,7 +39,7 @@ namespace ComicViewer.Services
             {
                 return existingTag;
             }
-            var tag = new TagModel
+            var tag = new TagData
             {
                 Key = tagKey,
                 Name = tagName,
@@ -65,7 +65,7 @@ namespace ComicViewer.Services
                 if (!existingTags.TryGetValue(tagName, out var tag))
                 {
                     // 不存在，创建
-                    var newTag = new TagModel
+                    var newTag = new TagData
                     {
                         Key = ComicUtils.CalculateMD5(tagName),
                         Name = tagName,
@@ -175,7 +175,7 @@ namespace ComicViewer.Services
             await context.SaveChangesAsync();
         }
 
-        public async Task<List<TagModel>> GetTagsOfComic(string comicKey)
+        public async Task<List<TagData>> GetTagsOfComic(string comicKey)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
@@ -289,7 +289,7 @@ namespace ComicViewer.Services
                 .AsNoTracking()  // 提高性能，不需要追踪变更
                 .ToListAsync();
         }
-        public async Task<List<TagModel>> GetAllTagsAsync()
+        public async Task<List<TagData>> GetAllTagsAsync()
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
             return await context.Tags

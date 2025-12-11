@@ -148,15 +148,18 @@ namespace ComicViewer.Services
                 // if stoppable, it isn't loaded
                 loaded = !(await service.FileLoader.StopMovingTask(Key));
             }
-            if (comicNormalPathDict.TryGetValue(Key, out var entry))
+            lock(_lock)
             {
-                entry.OnRemove = RemoveFile;
-                if (entry.UseCount == 0)
+                if (comicNormalPathDict.TryGetValue(Key, out var entry))
                 {
-                    comicNormalPathDict.Remove(Key);
-                    await entry.OnRemove(entry);
+                    entry.OnRemove = RemoveFile;
+                    if (entry.UseCount == 0)
+                    {
+                        comicNormalPathDict.Remove(Key);
+                        entry.OnRemove(entry).Wait();
+                    }
+                    return;
                 }
-                return;
             }
             if (loaded)
             {

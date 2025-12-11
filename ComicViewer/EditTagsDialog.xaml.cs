@@ -82,14 +82,14 @@ namespace ComicViewer
         }
         private void TagCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
+            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagData tag)
             {
                 _cache.SelectTag(tag.Key);
             }
         }
         private void TagCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
+            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagData tag)
             {
                 _cache.DeselectTag(tag.Key);
             }

@@ -10,7 +10,7 @@ namespace ComicViewer.Database
         public static ComicContext Instance => _instance.Value;
         public DbSet<MovingFileModel> MovingFiles { get; set; }
         public DbSet<ComicData> Comics { get; set; }
-        public DbSet<TagModel> Tags { get; set; }
+        public DbSet<TagData> Tags { get; set; }
         public DbSet<ComicTag> ComicTags { get; set; }
 
         public ComicContext() { }
@@ -92,8 +92,8 @@ namespace ComicViewer.Database
                       .OnDelete(DeleteBehavior.Cascade);
             });
 
-            // 配置 TagModel 主键
-            modelBuilder.Entity<TagModel>(entity =>
+            // 配置 TagData 主键
+            modelBuilder.Entity<TagData>(entity =>
             {
                 entity.ToTable("Tags");
 
@@ -133,7 +133,7 @@ namespace ComicViewer.Database
                 .HasForeignKey(ct => ct.ComicKey)
                 .OnDelete(DeleteBehavior.Cascade);
 
-            // 配置 ComicTag 与 TagModel 的关系
+            // 配置 ComicTag 与 TagData 的关系
             modelBuilder.Entity<ComicTag>()
                 .HasOne(ct => ct.Tag)
                 .WithMany(t => t.ComicTags)

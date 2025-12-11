@@ -15,15 +15,15 @@ namespace ComicViewer.Services
         private readonly string comicKey;
 
         // DynamicData 数据源
-        private readonly SourceList<TagModel> _tagsSource = new();
-        private readonly SourceList<TagModel> _selectedTagsSet = new();
+        private readonly SourceList<TagData> _tagsSource = new();
+        private readonly SourceList<TagData> _selectedTagsSet = new();
 
         // 可观察的状态
         private readonly BehaviorSubject<string> _searchTagNameSubject = new(string.Empty);
 
         // ViewModel 绑定的集合
-        private readonly ReadOnlyObservableCollection<TagModel> _unselectedTags;
-        private readonly ReadOnlyObservableCollection<TagModel> _selectedTags;
+        private readonly ReadOnlyObservableCollection<TagData> _unselectedTags;
+        private readonly ReadOnlyObservableCollection<TagData> _selectedTags;
 
         public TagViewModel ViewModel { get; }
 
@@ -74,7 +74,7 @@ namespace ComicViewer.Services
             });
         }
 
-        private Func<TagModel, bool> CreateTagNameFilter(string searchTagName)
+        private Func<TagData, bool> CreateTagNameFilter(string searchTagName)
         {
             return tag => string.IsNullOrEmpty(searchTagName) ||
                          tag.Name.Contains(searchTagName, StringComparison.OrdinalIgnoreCase);
@@ -87,7 +87,7 @@ namespace ComicViewer.Services
             _searchTagNameSubject.OnNext(searchTagName);
         }
 
-        public void AddTag(TagModel tag)
+        public void AddTag(TagData tag)
         {
             _tagsSource.Add(tag);
             _selectedTagsSet.Add(_tagsSource.Items.First(t => t.Key == tag.Key));
@@ -95,14 +95,14 @@ namespace ComicViewer.Services
 
         public void SelectTag(string tagKey)
         {
-            TagModel tag = _tagsSource.Items.First(t => t.Key == tagKey);
+            TagData tag = _tagsSource.Items.First(t => t.Key == tagKey);
             tag.Count++;
             _selectedTagsSet.Add(tag);
         }
 
         public void DeselectTag(string tagKey)
         {
-            TagModel tag = _tagsSource.Items.First(e => e.Key == tagKey);
+            TagData tag = _tagsSource.Items.First(e => e.Key == tagKey);
             tag.Count--;
             _selectedTagsSet.Remove(_selectedTagsSet.Items.First(t => t.Key == tagKey));
         }

@@ -97,10 +97,10 @@ namespace ComicViewer.Services
                 Rating = System?.Rating ?? 0
             };
         }
-        public List<TagModel> GetTags()
+        public List<TagData> GetTags()
         {
             return Tags.Select(t =>
-                new TagModel
+                new TagData
                 {
                     Key = ComicUtils.CalculateMD5(t),
                     Name = t,

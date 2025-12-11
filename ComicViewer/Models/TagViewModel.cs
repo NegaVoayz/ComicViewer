@@ -5,12 +5,12 @@ namespace ComicViewer.Models
 {
     public class TagViewModel
     {
-        public ReadOnlyObservableCollection<TagModel> UnselectedTags { get; }
-        public ReadOnlyObservableCollection<TagModel> SelectedTags { get; }
+        public ReadOnlyObservableCollection<TagData> UnselectedTags { get; }
+        public ReadOnlyObservableCollection<TagData> SelectedTags { get; }
 
         public TagViewModel(
-            ReadOnlyObservableCollection<TagModel> unselectedTags,
-            ReadOnlyObservableCollection<TagModel> selectedTags)
+            ReadOnlyObservableCollection<TagData> unselectedTags,
+            ReadOnlyObservableCollection<TagData> selectedTags)
         {
             UnselectedTags = unselectedTags;
             SelectedTags = selectedTags;

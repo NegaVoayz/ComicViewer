@@ -107,7 +107,7 @@ namespace ComicViewer.Migrations
                     b.ToTable("MovingFiles", (string)null);
                 });
 
-            modelBuilder.Entity("ComicViewer.Models.TagModel", b =>
+            modelBuilder.Entity("ComicViewer.Models.TagData", b =>
                 {
                     b.Property<string>("Key")
                         .HasMaxLength(32)
@@ -138,7 +138,7 @@ namespace ComicViewer.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
-                    b.HasOne("ComicViewer.Models.TagModel", "Tag")
+                    b.HasOne("ComicViewer.Models.TagData", "Tag")
                         .WithMany("ComicTags")
                         .HasForeignKey("TagKey")
                         .OnDelete(DeleteBehavior.Cascade)
@@ -165,7 +165,7 @@ namespace ComicViewer.Migrations
                     b.Navigation("ComicTags");
                 });
 
-            modelBuilder.Entity("ComicViewer.Models.TagModel", b =>
+            modelBuilder.Entity("ComicViewer.Models.TagData", b =>
                 {
                     b.Navigation("ComicTags");
                 });

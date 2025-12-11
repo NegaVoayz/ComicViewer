@@ -426,7 +426,6 @@ namespace ComicViewer
                         Debug.WriteLine($"添加失败 {filePath}: {ex.Message}");
                     }
                 }
-                await service.Cache.RefreshTagsAsync();
 
                 // 显示结果
                 string message = $"添加完成: {successCount} 个成功";
@@ -531,14 +530,14 @@ namespace ComicViewer
         }
         private void TagCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
+            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagData tag)
             {
                 service.Cache.SelectTag(tag.Key);
             }
         }
         private void TagCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagModel tag)
+            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagData tag)
             {
                 service.Cache.DeselectTag(tag.Key);
             }

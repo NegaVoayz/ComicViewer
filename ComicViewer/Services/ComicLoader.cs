@@ -67,11 +67,8 @@ namespace ComicViewer.Services
                 await service.FileLoader.AddMovingTask(comic.Key, filePath);
             }
 
-            if (comicMetadata != null)
-            {
-                await service.DataService.AddTagsToComicAsync(comic.Key, comicMetadata.GetTagKeys());
-                await service.Cache.RefreshTagsAsync();
-            }
+            await service.DataService.AddTagsToComicAsync(comic.Key, comicMetadata.GetTagKeys());
+            await service.Cache.RefreshTagsAsync();
             await service.Cache.AddComic(comic);
             return comic;
         }

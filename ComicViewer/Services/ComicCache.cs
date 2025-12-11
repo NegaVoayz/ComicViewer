@@ -61,7 +61,6 @@ namespace ComicViewer.Services
 
             // 设置漫画数据流
             _comicsSource.Connect()
-                //.Filter(combinedFilter)
                 .Filter(_searchNameSubject.Select(CreateNameFilter))
                 .Transform(data => ConvertComicDataToModel(data))
                 .Sort(_orderSubject.Select(CreateComparer))
@@ -71,6 +70,7 @@ namespace ComicViewer.Services
 
             // 未选中的标签（按名称过滤）
             _tagsSource.Connect()
+                .AutoRefresh(tag => tag.Count)  // 监听 Count 变化
                 .Filter(_searchTagNameSubject.Select(CreateTagNameFilter))
                 .Except(_selectedTagsSet.Connect())
                 .Bind(out _unselectedTags)
@@ -78,6 +78,7 @@ namespace ComicViewer.Services
 
             // 已选中的标签
             _selectedTagsSet.Connect()
+                .AutoRefresh(tag => tag.Count)  // 监听 Count 变化
                 .Bind(out _selectedTags)
                 .Subscribe();
 
@@ -97,7 +98,7 @@ namespace ComicViewer.Services
             await Task.WhenAll(comicsTask, tagsTask);
 
             var comics = comicsTask.Result;
-            var tags = tagsTask.Result;
+            var tags = tagsTask.Result.Select(e => new TagModel(e));
 
             // 使用 Edit() 进行批量操作，避免多次事件触发
             _comicsSource.Edit(list =>
@@ -186,9 +187,9 @@ namespace ComicViewer.Services
             await Task.CompletedTask;
         }
 
-        public async Task AddTag(TagModel tag)
+        public async Task AddTag(TagData tag)
         {
-            _tagsSource.Add(tag);
+            _tagsSource.Add(new TagModel(tag));
             await Task.CompletedTask;
         }
 
@@ -245,8 +246,11 @@ namespace ComicViewer.Services
         public async Task LoadInitialDataAsync()
         {
             // 异步加载初始数据
-            var comics = await service.DataService.GetAllComicsAsync();
-            var tags = await service.DataService.GetAllTagsAsync();
+            var task1 = service.DataService.GetAllComicsAsync();
+            var task2 = service.DataService.GetAllTagsAsync();
+            await Task.WhenAll(task1, task2);
+            var comics = task1.Result;
+            var tags = task2.Result.Select(e => new TagModel(e));
 
             _comicsSource.Edit(list =>
             {
@@ -263,11 +267,33 @@ namespace ComicViewer.Services
 
         public async Task RefreshTagsAsync()
         {
-            var allTags = await service.DataService.GetAllTagsAsync();
+            var allTags = (await service.DataService.GetAllTagsAsync())
+                .Select(e => new TagModel(e)); // 使用包装类
+
             _tagsSource.Edit(list =>
             {
-                list.Clear();
-                list.AddRange(allTags);
+                var existingKeys = list.Select(x => x.Key).ToHashSet();
+                var newKeys = allTags.Select(x => x.Key).ToHashSet();
+
+                var toRemove = list.Where(x => !newKeys.Contains(x.Key)).ToList();
+                foreach (var item in toRemove)
+                {
+                    list.Remove(item);
+                }
+
+                foreach (var newTag in allTags)
+                {
+                    var existing = list.FirstOrDefault(x => x.Key == newTag.Key);
+                    if (existing != null)
+                    {
+                        // 更新现有对象的属性
+                        existing.Count = newTag.Count;
+                    }
+                    else
+                    {
+                        list.Add(newTag);
+                    }
+                }
             });
         }
 

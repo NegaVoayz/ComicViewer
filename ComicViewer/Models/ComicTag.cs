@@ -22,6 +22,6 @@ namespace ComicViewer.Models
         public virtual ComicData Comic { get; set; } = null!;
 
         [ForeignKey("TagKey")]
-        public virtual TagModel Tag { get; set; } = null!;
+        public virtual TagData Tag { get; set; } = null!;
     }
 }
