@@ -14,12 +14,12 @@
 
         public ComicService()
         {
-            Cache = new(this);
             DataService = new(this);
-            Exporter = new(this);
             FileService = new(this);
-            Loader = new(this);
             FileLoader = new(this);
+            Loader = new(this);
+            Exporter = new(this);
+            Cache = new(this);
         }
     }
 }

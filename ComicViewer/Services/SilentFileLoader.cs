@@ -22,6 +22,7 @@ namespace ComicViewer.Services
         public SilentFileLoader(ComicService service)
         {
             this.service = service;
+            RecoverMovingTask();
         }
 
         public async Task<bool> StopMovingTask(string Key)
@@ -34,16 +35,16 @@ namespace ComicViewer.Services
             await taskInfo.task.ConfigureAwait(false);
             return true;
         }
-        public async Task RecoverMovingTask()
+        public void RecoverMovingTask()
         {
-            await Task.Run(async () =>
+            var task = service.DataService.GetAllMovingFilesAsync();
+            task.Wait();
+            var movingTasks = task.Result;
+            foreach (var movingFile in movingTasks)
             {
-                var movingTasks = await service.DataService.GetAllMovingFilesAsync();
-                foreach (var movingFile in movingTasks)
-                {
-                    StartMovingTask(movingFile);
-                }
-            });
+                service.FileService.AddComicTempPath(movingFile.Key, movingFile.SourcePath);
+                StartMovingTask(movingFile, true);
+            }
         }
         public async Task AddMovingTask(string Key, string sourcePath)
         {
@@ -100,7 +101,7 @@ namespace ComicViewer.Services
             }
             StartMovingTask(model);
         }
-        private void StartMovingTask(MovingFileModel model)
+        private void StartMovingTask(MovingFileModel model, bool is_recover = false)
         {
             var cts = new CancellationTokenSource();
 
@@ -108,7 +109,11 @@ namespace ComicViewer.Services
             {
                 try
                 {
-                    await service.DataService.AddMovingTask(model);
+                    if(!is_recover)
+                    {
+                        await service.DataService.AddMovingTask(model);
+                    }
+                    //Thread.Sleep(120 * 1000);
                     await MoveComicAsync(model, cts.Token);
                     // 任务成功完成
                 }
