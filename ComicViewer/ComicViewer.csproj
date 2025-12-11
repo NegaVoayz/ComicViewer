@@ -35,7 +35,7 @@
 
   <ItemGroup>
     <Content Include="appsettings.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </Content>
     <Resource Include="Resources\kris.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>

@@ -153,6 +153,8 @@
 
         <!-- 漫画显示区域 -->
         <ScrollViewer x:Name="ImageScrollViewer"
+              VerticalScrollBarVisibility="Disabled"
+              HorizontalScrollBarVisibility="Disabled"
               Margin="0,50,0,60">
 
             <Viewbox x:Name="ContentViewbox" 
@@ -173,8 +175,10 @@
                        HorizontalAlignment="Center"
                        VerticalAlignment="Center"
                        Visibility="Collapsed">
-                        <Image x:Name="LeftPageImage" Margin="5" Stretch="None"/>
-                        <Image x:Name="RightPageImage" Margin="5" Stretch="None"/>
+                        <UniformGrid Columns="2" Rows="1">
+                            <Image x:Name="LeftPageImage" Margin="5" Stretch="Uniform" />
+                            <Image x:Name="RightPageImage" Margin="5" Stretch="Uniform" />
+                        </UniformGrid>
                     </WrapPanel>
                 </Grid>
 

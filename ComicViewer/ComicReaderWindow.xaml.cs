@@ -202,6 +202,9 @@ namespace ComicViewer
                 LeftPageImage.Source = leftTask?.Result;
                 RightPageImage.Source = rightTask?.Result;
             });
+            //TwoPagePanel.InvalidateMeasure();
+            //TwoPagePanel.InvalidateArrange();
+            //TwoPagePanel.UpdateLayout();
         }
 
         // ========== 页面导航 ==========
