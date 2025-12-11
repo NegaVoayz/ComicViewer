@@ -59,13 +59,6 @@ namespace ComicViewer.Services
 
             // 初始化数据流
 
-            // 组合所有过滤条件
-            //var combinedFilter = Observable.CombineLatest(
-            //    _selectedTagKeysSubject.Select(CreateTagFilter),
-            //    _searchNameSubject.Select(CreateNameFilter),
-            //    (tagFilter, nameFilter) => new Func<ComicData, bool>(c => tagFilter(c) && nameFilter(c))
-            //);
-
             // 设置漫画数据流
             _comicsSource.Connect()
                 //.Filter(combinedFilter)
@@ -119,20 +112,6 @@ namespace ComicViewer.Services
                 list.AddRange(tags);
             });
         }
-
-        // done by database
-        //private Func<ComicData, bool> CreateTagFilter(HashSet<string> selectedTagKeys)
-        //{
-        //    return comic =>
-        //    {
-        //        if (!selectedTagKeys.Any()) return true;
-
-        //        var comicTagKeys = new HashSet<string>(
-        //            comic.ComicTags?.Select(ct => ct.Tag.Key) ?? Enumerable.Empty<string>()
-        //        );
-        //        return selectedTagKeys.IsSubsetOf(comicTagKeys);
-        //    };
-        //}
 
         private Func<ComicData, bool> CreateNameFilter(string searchName)
         {

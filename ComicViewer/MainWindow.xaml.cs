@@ -426,6 +426,7 @@ namespace ComicViewer
                         Debug.WriteLine($"添加失败 {filePath}: {ex.Message}");
                     }
                 }
+                await service.Cache.RefreshTagsAsync();
 
                 // 显示结果
                 string message = $"添加完成: {successCount} 个成功";
