@@ -26,6 +26,18 @@ namespace ComicViewer.Services
                 }
             }
         }
+        public static string GetCommentOfZip(string filePath)
+        {
+            using (var zipStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
+            {
+                // Open the existing ZIP file in Update mode
+                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Read))
+                {
+                    // Get the archive-level comment
+                    return archive.Comment;
+                }
+            }
+        }
         public static string GetCombinedName(IEnumerable<string> authors, string name, IEnumerable<string> tags)
         {
             if (!tags.Any() && !authors.Any())
@@ -155,11 +167,13 @@ namespace ComicViewer.Services
             // 获取文件信息
             FileInfo fileInfo = new FileInfo(filePath);
 
+            var source = GetCommentOfZip(filePath);
+
             return new ComicMetadata
             {
                 Version = "1.0",
                 Title = title,
-                Source = fileName,
+                Source = source.Length == 0? fileName:source,
                 Tags = tags,
                 System = new SystemInfo
                 {
