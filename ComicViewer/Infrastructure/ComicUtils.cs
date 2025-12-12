@@ -1,6 +1,8 @@
 ﻿using ComicViewer.Models;
+using Microsoft.Extensions.Primitives;
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Media;
@@ -9,18 +11,34 @@ namespace ComicViewer.Services
 {
     public class ComicUtils
     {
-        public static string GetCombinedName(string name, IEnumerable<string> tags)
+        public const string AuthorPrefix = "@Author:";
+        public static void AddCommentToZip(string filePath, string comment)
         {
-            if (!tags.Any())
+            using (var zipStream = new FileStream(filePath, FileMode.Open, FileAccess.ReadWrite))
+            {
+                // Open the existing ZIP file in Update mode
+                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Update))
+                {
+                    // Set the archive-level comment
+                    archive.Comment = comment;
+
+                    // The comment is written when the ZipArchive object is disposed (on '}')
+                }
+            }
+        }
+        public static string GetCombinedName(IEnumerable<string> authors, string name, IEnumerable<string> tags)
+        {
+            if (!tags.Any() && !authors.Any())
             {
                 return name.Trim();
             }
 
             // 构建标签字符串，每个标签用ASCII中括号包裹
             var tagStrings = tags.Select(tag => $"[{tag}]");
+            var authorStrings = authors.Select(author => $"[{author}]");
 
             // 用空格连接所有部分
-            string result = $"{name} {string.Join(" ", tagStrings)}";
+            string result = $"{string.Join(" ", authorStrings)} {name} {string.Join(" ", tagStrings)}";
 
             return result.Trim();
         }
@@ -34,6 +52,8 @@ namespace ComicViewer.Services
             List<string> extracted = new List<string>();
             StringBuilder remaining = new StringBuilder();
             StringBuilder currentBracketContent = new StringBuilder();
+
+            bool author_part = true;
 
             // 定义所有可能的括号类型
             char[] openingBrackets = { '[', '【', '〔', '［' };  // 左括号：半角、全角、中文、其他全角
@@ -54,7 +74,16 @@ namespace ComicViewer.Services
                     insideBrackets = true;
                     bracketDepth = 1;
                     expectedClosingBracket = closingBrackets[openingIndex];
+                    if(author_part)
+                    {
+                        currentBracketContent.Append(ComicUtils.AuthorPrefix);
+                    }
                     continue;
+                }
+
+                if(author_part && !insideBrackets)
+                {
+                    author_part = false;
                 }
 
                 // 检查是否是右括号
@@ -130,6 +159,7 @@ namespace ComicViewer.Services
             {
                 Version = "1.0",
                 Title = title,
+                Source = fileName,
                 Tags = tags,
                 System = new SystemInfo
                 {
@@ -143,7 +173,7 @@ namespace ComicViewer.Services
         }
         public static string ComicNormalPath(string Key)
         {
-            return System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
+            return Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
         }
         public static string CalculateMD5(string input)
         {

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 
@@ -19,6 +20,10 @@ namespace ComicViewer.Models
         [Column("Title", TypeName = "TEXT")]
         [Comment("漫画标题")]
         public required string Title { get; set; }
+
+        [Column("Source", TypeName = "TEXT")]
+        [Comment("漫画源")]
+        public required string Source { get; set; }
 
         [Column("CreatedTime", TypeName = "DATETIME")]
         [Comment("创建时间")]
@@ -44,6 +49,7 @@ namespace ComicViewer.Models
             return new ComicModel(service)
             {
                 Title = Title,
+                Source = Source,
                 Progress = Progress,
                 Key = Key,
                 LastAccess = LastAccess,
@@ -58,7 +64,7 @@ namespace ComicViewer.Models
             {
                 Version = "1.0",
                 Title = Title,
-                // 从 ComicTags 提取标签名称
+                Source = Source,
                 Tags = ComicTags?.Select(ct => ct.Tag.Name).ToList() ?? new List<string>(),
                 System = new SystemInfo
                 {
@@ -75,8 +81,10 @@ namespace ComicViewer.Models
         private readonly ComicService service;
         public required string Key { get; set; }
         private string _title = null!;
-        private ObservableTask<string>? _tagsTask;
+        private string _source = null!;
+        private ObservableTask<List<TagData>>? _tagsTask;
         private string? _tagsPreview;
+        private string? _author;
         private int _progress;
         private int _length = 0;
         private ObservableTask<int>? _lengthTask;
@@ -97,6 +105,12 @@ namespace ComicViewer.Models
             set => SetField(ref _title, value);
         }
 
+        public string Source
+        {
+            get => _source;
+            set => SetField(ref _source, value);
+        }
+
         public string TagsPreview
         {
             get
@@ -110,6 +124,21 @@ namespace ComicViewer.Models
                 return _tagsPreview ?? "N/A";
             }
             set => SetField(ref _tagsPreview, value);
+        }
+
+        public string Author
+        {
+            get
+            {
+                // 当访问Tags时，如果为空则触发懒加载
+                if (_author == null && _tagsTask == null)
+                {
+                    // 开始加载，但不等待
+                    RefreshTags();
+                }
+                return _author ?? "N/A";
+            }
+            set => SetField(ref _author, value);
         }
 
         public int Progress
@@ -156,17 +185,24 @@ namespace ComicViewer.Models
 
         public void RefreshTags()
         {
-            _tagsTask = new ObservableTask<string>(service.DataService.GetTagsPreviewOfComic(Key));
+            _tagsTask = new ObservableTask<List<TagData>>(service.DataService.GetTagsOfComic(Key));
             _tagsTask.PropertyChanged += OnTagsTaskPropertyChanged;
         }
 
         private void OnTagsTaskPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(ObservableTask<string>.Result))
+            if (e.PropertyName == nameof(ObservableTask<List<TagData>>.Result))
             {
                 if (_tagsTask?.Result != null)
                 {
-                    TagsPreview = _tagsTask.Result;
+                    var result = _tagsTask.Result;
+                    var authors = result.Where(e => e.Name.StartsWith(ComicUtils.AuthorPrefix)).Select(e => e.Name.Substring(ComicUtils.AuthorPrefix.Length));
+                    Author = authors.Any() ? String.Join(", ", authors) : "Unknown";
+                    var tags = result
+                        .Where(e => !e.Name.StartsWith(ComicUtils.AuthorPrefix))
+                        .Select(e => e.Name)
+                        .Take(3); // Take the first 3 non-author tags
+                    TagsPreview = tags.Any() ? String.Join(", ", tags) : "TagMe";
                     OnPropertyChanged();
                     _tagsTask = null;
                 }

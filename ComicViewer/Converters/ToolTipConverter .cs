@@ -53,7 +53,7 @@ namespace ComicViewer.Converters
             titleBlock.SetBinding(TextBlock.TextProperty,
                 new Binding("Title") { Source = comic });
 
-            // 标签 - 使用绑定和多值转换器
+            // 标签 - 使用绑定和转换器
             var tagsBlock = new TextBlock
             {
                 FontSize = 12,
@@ -68,6 +68,22 @@ namespace ComicViewer.Converters
 
             };
             tagsBlock.SetBinding(TextBlock.TextProperty, tagsBinding);
+
+            // 作者 - 使用绑定和转换器
+            var authorsBlock = new TextBlock
+            {
+                FontSize = 12,
+                Margin = new Thickness(0, 0, 0, 4)
+            };
+
+            // 创建一个绑定来格式化作者
+            var authorsBinding = new Binding("Author")
+            {
+                Converter = new AuthorsFormatConverter(),
+                Source = comic
+
+            };
+            authorsBlock.SetBinding(TextBlock.TextProperty, authorsBinding);
 
             // 阅读进度 - 使用绑定和多值转换器
             var progressBlock = new TextBlock
@@ -102,6 +118,7 @@ namespace ComicViewer.Converters
             stackPanel.Children.Add(titleBlock);
             stackPanel.Children.Add(separator);
             stackPanel.Children.Add(tagsBlock);
+            stackPanel.Children.Add(authorsBlock);
             stackPanel.Children.Add(progressBlock);
             stackPanel.Children.Add(hintBlock);
 
@@ -119,6 +136,24 @@ namespace ComicViewer.Converters
                     return "标签: " + tagsPreview;
                 }
                 return "标签: 无";
+            }
+
+            public object ConvertBack(object value, Type targetTypes, object parameter, CultureInfo culture)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        // 作者格式化转换器
+        private class AuthorsFormatConverter : IValueConverter
+        {
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                if (value is string authors)
+                {
+                    return "作者: " + authors;
+                }
+                return "作者: 未知";
             }
 
             public object ConvertBack(object value, Type targetTypes, object parameter, CultureInfo culture)

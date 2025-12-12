@@ -25,6 +25,39 @@ namespace ComicViewer.Services
                 new DbContextOptionsBuilder<ComicContext>()
                 .UseSqlite($"Data Source={dbPath}")
                 .Options);
+
+            var db_context = _contextFactory.CreateDbContext();
+
+            // Check if the history table is missing, but the database file already exists.
+            // This implies an existing, untracked database.
+            if (!db_context.Database.GetAppliedMigrations().Any() && File.Exists(dbPath))
+            {
+                // Define the ID of your first migration
+                // **UPDATE THIS STRING** to match the ID in your Migrations folder
+                const string InitialMigrationId = "20251203101108_InitialCreate";
+
+                // Attempt to mark the initial migration as applied to bypass the CREATE TABLE error.
+                try
+                {
+                    // This is a common EF Core version. Check your project for the actual version.
+                    const string ProductVersion = "7.0.0";
+
+                    // Manually insert the history record
+                    db_context.Database.ExecuteSqlRaw(
+                        $@"INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") 
+                    VALUES ('{InitialMigrationId}', '{ProductVersion}')");
+
+                    Console.WriteLine($"Marked initial migration '{InitialMigrationId}' as applied.");
+                }
+                catch (Exception ex)
+                {
+                    // Log or handle if the insert fails (e.g., table already exists, but history table is not the issue)
+                    Console.WriteLine($"Failed to mark initial migration as applied: {ex.Message}");
+                }
+            }
+
+            // This will now apply any *remaining* migrations (i.e., your patch).
+            db_context.Database.Migrate();
         }
 
         public async Task<TagData> AddTagAsync(string tagName)
@@ -118,6 +151,19 @@ namespace ComicViewer.Services
                     TagKey = tag.Key
                 }
             );
+
+            await context.SaveChangesAsync();
+        }
+
+        public async Task RemoveTagsFromComicAsync(string comicKey, IEnumerable<string> tagName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var tagKeys = tagName.Select(e => ComicUtils.CalculateMD5(e)).ToHashSet();
+
+            await context.ComicTags
+                .Where(e => e.ComicKey == comicKey && tagKeys.Contains(e.ComicKey))
+                .ExecuteDeleteAsync();
 
             await context.SaveChangesAsync();
         }

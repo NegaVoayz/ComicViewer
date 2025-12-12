@@ -11,7 +11,6 @@ namespace ComicViewer
         protected override void OnStartup(StartupEventArgs e)
         {
             base.OnStartup(e);
-            ComicContext.Instance.Database.EnsureCreated();
         }
     }
 

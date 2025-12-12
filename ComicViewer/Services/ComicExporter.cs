@@ -2,6 +2,7 @@
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -38,7 +39,31 @@ namespace ComicViewer.Services
                 // if just export.
                 if (Path.GetExtension(destinationPath) == ".zip")
                 {
-                    await Task.Run(() => File.Copy(sourceFilePath, destinationPath, true));
+                    string fileName = Path.GetFileNameWithoutExtension(destinationPath);
+                    string fullPath = destinationPath;
+                    if (fileName == comic.Title)
+                    {
+                        string? directory = Path.GetDirectoryName(destinationPath);
+                        var allTags = (await service.DataService.GetTagsOfComic(comic.Key))
+                            .Select(e => e.Name);
+                        var authors = allTags.Where(e => e.StartsWith(ComicUtils.AuthorPrefix)).Select(e => e.Substring(ComicUtils.AuthorPrefix.Length));
+                        var tags = allTags.Where(e => !e.StartsWith(ComicUtils.AuthorPrefix));
+                        string processedName = ComicUtils.GetCombinedName(authors, comic.Title, tags);
+                        processedName = $"{processedName}.zip";
+                        if (directory != null)
+                        {
+                            fullPath = Path.Combine(directory, processedName);
+                        }
+                        else
+                        {
+                            fullPath = processedName;
+                        }
+                    }
+                    await Task.Run(() =>
+                    {
+                        File.Copy(sourceFilePath, fullPath, true);
+                        ComicUtils.AddCommentToZip(fullPath, comic.Source);
+                    });
                     MessageBox.Show("分享包创建成功！");
                     return;
                 }
@@ -81,6 +106,8 @@ namespace ComicViewer.Services
         public required string Version { get; set; }
         [JsonPropertyName("title")]
         public required string Title { get; set; }
+        [JsonPropertyName("source")]
+        public required string Source { get; set; }
         [JsonPropertyName("tags")]
         public required List<string> Tags { get; set; }
         [JsonPropertyName("system")]
@@ -91,6 +118,7 @@ namespace ComicViewer.Services
             {
                 Key = ComicUtils.CalculateMD5(Title),
                 Title = Title,
+                Source = Source,
                 CreatedTime = System?.CreatedTime ?? DateTime.Now,
                 LastAccess = System?.LastAccess ?? DateTime.Now,
                 Progress = System?.ReadProgress ?? 0,

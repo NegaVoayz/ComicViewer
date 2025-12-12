@@ -238,7 +238,7 @@ namespace ComicViewer
                 var dialog = new EditTagsDialog(service, comic)
                 {
                     Owner = this,
-                    WindowStartupLocation = WindowStartupLocation.CenterOwner
+                    WindowStartupLocation = WindowStartupLocation.Manual
                 };
 
                 // 订阅窗口关闭事件
@@ -269,6 +269,93 @@ namespace ComicViewer
             }
         }
 
+        private void EditSourceMenuItem(ComicModel comic)
+        {
+            // 弹出标签编辑窗口
+            // 允许添加/删除标签
+            ShowStatusMessage($"正在编辑: {comic.Title}", 1000);
+
+            // 创建并显示编辑器窗口（非模态）
+            var dialog = new TextEditPopup(comic.Source, "编辑源")
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.Manual
+            };
+
+            // 订阅窗口关闭事件
+            dialog.Closed += (s, e) =>
+            {
+                if (dialog.IsConfirmed == true)
+                {
+                    // 更新漫画标签
+                    // 自动刷新显示
+                    comic.Source = dialog.ResultText;
+
+                    // 显示反馈
+                    ShowStatusMessage($"已更新 {comic.Title} 的源", 2000);
+                }
+            };
+
+            // 显示窗口（非模态）
+            dialog.Show();
+            return;
+        }
+
+        private void CopySourceMenuItem(ComicModel comic)
+        {
+            try
+            {
+                Clipboard.SetText(comic.Source);
+                ShowStatusMessage("目录路径已复制到剪贴板", 2000);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"复制失败: {ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void EditAuthorMenuItem(ComicModel comic)
+        {
+            // 弹出标签编辑窗口
+            // 允许添加/删除标签
+            ShowStatusMessage($"正在编辑: {comic.Title}", 1000);
+
+            // 创建并显示编辑器窗口（非模态）
+            var dialog = new TextEditPopup(comic.Author, "编辑作者")
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.Manual
+            };
+
+            // 订阅窗口关闭事件
+            dialog.Closed += async (s, e) =>
+            {
+                if (dialog.IsConfirmed == true)
+                {
+                    var oldAuthors = comic.Author.Split(",").Select(e => e.Trim()).ToHashSet();
+                    var newAuthors = dialog.ResultText.Split(",").Select(e => e.Trim()).ToHashSet();
+
+                    var removedAuthors = oldAuthors.Except(newAuthors);
+                    var addedAuthors = newAuthors.Except(oldAuthors);
+                    // 更新漫画标签
+                    // 自动刷新显示
+                    comic.Author = dialog.ResultText;
+
+                    await service.DataService.RemoveTagsFromComicAsync(comic.Key, removedAuthors);
+                    await service.DataService.AddTagsAsync(addedAuthors);
+                    await service.DataService.AddTagsToComicAsync(comic.Key, addedAuthors);
+
+                    // 显示反馈
+                    ShowStatusMessage($"已更新 {comic.Title} 的源", 2000);
+                }
+            };
+
+            // 显示窗口（非模态）
+            dialog.Show();
+            return;
+        }
+
         private async Task ShareComic(ComicModel comic)
         {
             // 生成.cmc分享包
@@ -286,32 +373,8 @@ namespace ComicViewer
                 string fileExt = Path.GetExtension(saveDialog.FileName);
 
                 string fullPath = saveDialog.FileName;
-                if(fileName == comic.Title && fileExt == ".zip")
-                {
-                    var tags = (await service.DataService.GetTagsOfComic(comic.Key))
-                        .Select(e => e.Name);
-                    string processedName = ComicUtils.GetCombinedName(comic.Title, tags);
-                    processedName = $"{processedName}.zip";
-                    if(directory != null)
-                    {
-                        fullPath = Path.Combine(directory, processedName);
-                    }
-                    else
-                    {
-                        fullPath = processedName;
-                    }
-                }
                 await service.Exporter.CreateSharePackageAsync(comic, fullPath);
             }
-        }
-
-        private void RevealInExplorer(string comicKey)
-        {
-            // 在资源管理器中定位文件
-            string directoryPath = Configs.GetFilePath();
-            string filename = $"{comicKey}.zip";
-            string fullPath = Path.Combine(directoryPath, filename);
-            System.Diagnostics.Process.Start("explorer.exe", $"/select,\"{fullPath}\"");
         }
 
         private async Task RemoveComic(ComicModel comic)
@@ -499,6 +562,30 @@ namespace ComicViewer
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
                 EditComicTags(comic);
+            }
+        }
+
+        private void EditSourceMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                EditSourceMenuItem(comic);
+            }
+        }
+
+        private void EditAuthorMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                EditAuthorMenuItem(comic);
+            }
+        }
+
+        private void CopySourceMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                CopySourceMenuItem(comic);
             }
         }
 
