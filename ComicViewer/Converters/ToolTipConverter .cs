@@ -85,6 +85,22 @@ namespace ComicViewer.Converters
             };
             authorsBlock.SetBinding(TextBlock.TextProperty, authorsBinding);
 
+            // 源 - 使用绑定和转换器
+            var sourceBlock = new TextBlock
+            {
+                FontSize = 12,
+                Margin = new Thickness(0, 0, 0, 4)
+            };
+
+            // 创建一个绑定来格式化源
+            var sourceBinding = new Binding("Source")
+            {
+                Converter = new SourceFormatConverter(),
+                Source = comic
+
+            };
+            sourceBlock.SetBinding(TextBlock.TextProperty, sourceBinding);
+
             // 阅读进度 - 使用绑定和多值转换器
             var progressBlock = new TextBlock
             {
@@ -119,6 +135,7 @@ namespace ComicViewer.Converters
             stackPanel.Children.Add(separator);
             stackPanel.Children.Add(tagsBlock);
             stackPanel.Children.Add(authorsBlock);
+            stackPanel.Children.Add(sourceBlock);
             stackPanel.Children.Add(progressBlock);
             stackPanel.Children.Add(hintBlock);
 
@@ -154,6 +171,24 @@ namespace ComicViewer.Converters
                     return "作者: " + authors;
                 }
                 return "作者: 未知";
+            }
+
+            public object ConvertBack(object value, Type targetTypes, object parameter, CultureInfo culture)
+            {
+                throw new NotImplementedException();
+            }
+        }
+
+        // 源格式化转换器
+        private class SourceFormatConverter : IValueConverter
+        {
+            public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+            {
+                if (value is string source)
+                {
+                    return "源: " + source;
+                }
+                return "源: 未知";
             }
 
             public object ConvertBack(object value, Type targetTypes, object parameter, CultureInfo culture)

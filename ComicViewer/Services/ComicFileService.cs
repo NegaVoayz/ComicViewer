@@ -16,9 +16,9 @@ namespace ComicViewer.Services
     }
     public class ComicFileService
     {
-        private Dictionary<string, Entry> comicNormalPathDict;
+        private Dictionary<string, Entry> comicNormalPathDict = new();
 
-        private Dictionary<string, Entry> comicTempPathDict;
+        private Dictionary<string, Entry> comicTempPathDict = new();
 
         private readonly object _lock = new object();
 
@@ -27,8 +27,6 @@ namespace ComicViewer.Services
         public ComicFileService(ComicService service)
         {
             this.service = service;
-            comicNormalPathDict = new();
-            comicTempPathDict = new();
         }
         private static async Task RemoveFile(Entry entry)
         {
@@ -148,7 +146,7 @@ namespace ComicViewer.Services
                 // if stoppable, it isn't loaded
                 loaded = !(await service.FileLoader.StopMovingTask(Key));
             }
-            lock(_lock)
+            lock (_lock)
             {
                 if (comicNormalPathDict.TryGetValue(Key, out var entry))
                 {

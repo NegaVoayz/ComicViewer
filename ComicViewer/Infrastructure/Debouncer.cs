@@ -114,7 +114,7 @@ namespace ComicViewer.Infrastructure
             _delayMilliseconds = delayMilliseconds;
             if (action != null)
                 _action = action;
-            if(parameter != null)
+            if (parameter != null)
             {
                 _lastParameter = parameter;
             }

@@ -1,10 +1,13 @@
-﻿namespace ComicViewer.Services
+﻿using ComicViewer.Infrastructure;
+
+namespace ComicViewer.Services
 {
     public class ComicService
     {
         private static readonly Lazy<ComicService> _instance = new();
         public static ComicService Instance => _instance.Value;
 
+        public DAGTaskManager Load = new();
         public ComicCache Cache { get; }
         public ComicDataService DataService { get; }
         public ComicExporter Exporter { get; }
@@ -20,6 +23,12 @@
             Loader = new(this);
             Exporter = new(this);
             Cache = new(this);
+            Load.Run();
+        }
+
+        public async Task Initiallize()
+        {
+            await Load.Done();
         }
     }
 }

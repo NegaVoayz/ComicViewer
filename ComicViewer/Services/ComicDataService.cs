@@ -1,4 +1,5 @@
 ﻿using ComicViewer.Database;
+using ComicViewer.Infrastructure;
 using ComicViewer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
@@ -26,38 +27,19 @@ namespace ComicViewer.Services
                 .UseSqlite($"Data Source={dbPath}")
                 .Options);
 
-            var db_context = _contextFactory.CreateDbContext();
 
-            // Check if the history table is missing, but the database file already exists.
-            // This implies an existing, untracked database.
-            if (!db_context.Database.GetAppliedMigrations().Any() && File.Exists(dbPath))
+            service.Load.Add(new DAGTask
             {
-                // Define the ID of your first migration
-                // **UPDATE THIS STRING** to match the ID in your Migrations folder
-                const string InitialMigrationId = "20251203101108_InitialCreate";
+                name = "DataService",
+                task = MigrateDatabase
+            });
+        }
 
-                // Attempt to mark the initial migration as applied to bypass the CREATE TABLE error.
-                try
-                {
-                    // This is a common EF Core version. Check your project for the actual version.
-                    const string ProductVersion = "7.0.0";
-
-                    // Manually insert the history record
-                    db_context.Database.ExecuteSqlRaw(
-                        $@"INSERT INTO ""__EFMigrationsHistory"" (""MigrationId"", ""ProductVersion"") 
-                    VALUES ('{InitialMigrationId}', '{ProductVersion}')");
-
-                    Console.WriteLine($"Marked initial migration '{InitialMigrationId}' as applied.");
-                }
-                catch (Exception ex)
-                {
-                    // Log or handle if the insert fails (e.g., table already exists, but history table is not the issue)
-                    Console.WriteLine($"Failed to mark initial migration as applied: {ex.Message}");
-                }
-            }
-
-            // This will now apply any *remaining* migrations (i.e., your patch).
-            db_context.Database.Migrate();
+        private async Task MigrateDatabase()
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            await context.Database.MigrateAsync();
+            await context.SaveChangesAsync();
         }
 
         public async Task<TagData> AddTagAsync(string tagName)

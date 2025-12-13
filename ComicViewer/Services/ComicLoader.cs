@@ -12,17 +12,6 @@ namespace ComicViewer.Services
         public ComicLoader(ComicService service)
         {
             this.service = service;
-            _ = RecoverLoads();
-        }
-
-        private async Task RecoverLoads()
-        {
-            var movingTasks = await service.DataService.GetAllMovingFilesAsync();
-            foreach (var movingTask in movingTasks)
-            {
-                service.FileService.AddComicTempPath(movingTask.Key, movingTask.SourcePath);
-                await service.FileLoader.AddMovingTask(movingTask);
-            }
         }
 
         public async Task<ComicData?> AddComicAsync(string filePath)

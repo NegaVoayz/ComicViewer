@@ -2,7 +2,6 @@
 using SharpCompress.Common;
 using SharpCompress.Writers;
 using System.IO;
-using System.IO.Compression;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;

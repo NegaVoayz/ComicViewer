@@ -6,7 +6,6 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Input;
 
 namespace ComicViewer
@@ -33,7 +32,7 @@ namespace ComicViewer
             InitializeSaveDirectory();
 
             // 初始加载漫画
-            Loaded += async (s, e) => await service.Cache.InitializeAsync();
+            Loaded += async (s, e) => await service.Initiallize();
 
             AllowDrop = true;
             DragEnter += MainWindow_DragEnter;
@@ -617,14 +616,14 @@ namespace ComicViewer
         }
         private void TagCheckBox_Checked(object sender, RoutedEventArgs e)
         {
-            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagData tag)
+            if (sender is CheckBox checkBox && checkBox.DataContext is TagModel tag)
             {
                 service.Cache.SelectTag(tag.Key);
             }
         }
         private void TagCheckBox_Unchecked(object sender, RoutedEventArgs e)
         {
-            if (sender is ToggleButton toggleButton && toggleButton.DataContext is TagData tag)
+            if (sender is CheckBox checkBox && checkBox.DataContext is TagModel tag)
             {
                 service.Cache.DeselectTag(tag.Key);
             }

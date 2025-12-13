@@ -88,9 +88,16 @@ namespace ComicViewer.Services
 
             // 创建 ViewModel
             ViewModel = new ComicViewModel(_comics, _unselectedTags, _selectedTags);
+
+            service.Load.Add(new DAGTask
+            {
+                name = "Cache",
+                task = InitializeAsync,
+                requirements = { "DataService", "FileLoader" }
+            });
         }
 
-        public async Task InitializeAsync()
+        private async Task InitializeAsync()
         {
             var comicsTask = service.DataService.GetAllComicsAsync();
             var tagsTask = service.DataService.GetAllTagsAsync();

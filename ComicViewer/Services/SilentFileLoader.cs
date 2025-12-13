@@ -1,4 +1,5 @@
-﻿using ComicViewer.Models;
+﻿using ComicViewer.Infrastructure;
+using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Archives.Tar;
 using SharpCompress.Common;
@@ -15,14 +16,17 @@ namespace ComicViewer.Services
         private readonly ConcurrentDictionary<string, (Task task, CancellationTokenSource cts)> _runningTasks
         = new ConcurrentDictionary<string, (Task, CancellationTokenSource)>();
 
-        private readonly object _syncLock = new object();
-
         private readonly ComicService service;
 
         public SilentFileLoader(ComicService service)
         {
             this.service = service;
-            RecoverMovingTask();
+            service.Load.Add(new DAGTask
+            {
+                name = "FileLoader",
+                task = RecoverLoads,
+                requirements = { "DataService", "FileService" }
+            });
         }
 
         public async Task<bool> StopMovingTask(string Key)
@@ -35,15 +39,21 @@ namespace ComicViewer.Services
             await taskInfo.task.ConfigureAwait(false);
             return true;
         }
-        public void RecoverMovingTask()
+
+        private async Task RecoverLoads()
         {
-            var task = service.DataService.GetAllMovingFilesAsync();
-            task.Wait();
-            var movingTasks = task.Result;
-            foreach (var movingFile in movingTasks)
+            var movingTasks = await service.DataService.GetAllMovingFilesAsync();
+            foreach (var movingTask in movingTasks)
             {
-                service.FileService.AddComicTempPath(movingFile.Key, movingFile.SourcePath);
-                StartMovingTask(movingFile, true);
+                // if the source is gone, remove it.
+                if (!File.Exists(movingTask.SourcePath))
+                {
+                    await service.DataService.DoneMovingTaskAsync(movingTask);
+                    await service.DataService.RemoveComicAsync(movingTask.Key);
+                    continue;
+                }
+                service.FileService.AddComicTempPath(movingTask.Key, movingTask.SourcePath);
+                StartMovingTask(movingTask, true);
             }
         }
         public async Task AddMovingTask(string Key, string sourcePath)
@@ -109,7 +119,7 @@ namespace ComicViewer.Services
             {
                 try
                 {
-                    if(!is_recover)
+                    if (!is_recover)
                     {
                         await service.DataService.AddMovingTask(model);
                     }

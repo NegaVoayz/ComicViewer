@@ -1,5 +1,4 @@
-﻿using ComicViewer.Database;
-using System.Windows;
+﻿using System.Windows;
 
 namespace ComicViewer
 {

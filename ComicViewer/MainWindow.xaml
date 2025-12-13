@@ -20,6 +20,12 @@
 
             <!-- 转换器实例 -->
             <Converter:ToolTipConverter x:Key="ToolTipConverter"/>
+            <Converter:TagPanelConverter x:Key="TagPanelConverter"/>
+            
+            <!-- In your resources section -->
+            <DataTemplate x:Key="TagPanelTemplate">
+                <ContentControl Content="{Binding Converter={StaticResource TagPanelConverter}}"/>
+            </DataTemplate>
 
             <!-- 圆角文本框样式 -->
             <Style x:Key="RoundTextBoxStyle" TargetType="TextBox">
@@ -472,6 +478,12 @@
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="White"/>
 
+                                            <TextBlock Text="{Binding Source}" 
+                                           FontSize="10"
+                                           Foreground="#CCCCCC"
+                                           Margin="5,0,5,5"
+                                           TextTrimming="CharacterEllipsis"/>
+
                                             <TextBlock Text="{Binding TagsPreview}" 
                                            FontSize="10"
                                            Foreground="#CCCCCC"
@@ -555,15 +567,9 @@
                                     <DataTemplate>
                                         <CheckBox Margin="0,1"
                                                   IsChecked="True"
-                                                  Unchecked="TagCheckBox_Unchecked">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}"
-                                                           FontSize="12"
-                                                           Margin="4,0,4,0"/>
-                                                <TextBlock Text="{Binding Count}" 
-                                                           Foreground="#888"
-                                                           FontSize="11"/>
-                                            </StackPanel>
+                                                  Unchecked="TagCheckBox_Unchecked"
+                                                  Content="{Binding}"
+                                                  ContentTemplate="{StaticResource TagPanelTemplate}">
                                         </CheckBox>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
@@ -574,15 +580,9 @@
                                     <DataTemplate>
                                         <CheckBox Margin="0,1"
                                                   IsChecked="False"
-                                                  Checked="TagCheckBox_Checked">
-                                            <StackPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" 
-                                                           FontSize="12"
-                                                           Margin="4,0,4,0"/>
-                                                <TextBlock Text="{Binding Count}" 
-                                                           Foreground="#888"
-                                                           FontSize="11"/>
-                                            </StackPanel>
+                                                  Checked="TagCheckBox_Checked"
+                                                  Content="{Binding}"
+                                                  ContentTemplate="{StaticResource TagPanelTemplate}">
                                         </CheckBox>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

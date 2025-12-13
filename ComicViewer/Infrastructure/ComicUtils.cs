@@ -1,11 +1,7 @@
-﻿using ComicViewer.Models;
-using Microsoft.Extensions.Primitives;
-using System;
-using System.IO;
+﻿using System.IO;
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
-using System.Windows.Media;
 
 namespace ComicViewer.Services
 {
@@ -86,14 +82,14 @@ namespace ComicViewer.Services
                     insideBrackets = true;
                     bracketDepth = 1;
                     expectedClosingBracket = closingBrackets[openingIndex];
-                    if(author_part)
+                    if (author_part)
                     {
                         currentBracketContent.Append(ComicUtils.AuthorPrefix);
                     }
                     continue;
                 }
 
-                if(author_part && !insideBrackets)
+                if (author_part && !insideBrackets)
                 {
                     author_part = false;
                 }
@@ -173,7 +169,7 @@ namespace ComicViewer.Services
             {
                 Version = "1.0",
                 Title = title,
-                Source = source.Length == 0? fileName:source,
+                Source = source.Length == 0 ? fileName : source,
                 Tags = tags,
                 System = new SystemInfo
                 {
