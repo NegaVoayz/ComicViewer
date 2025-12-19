@@ -3,11 +3,15 @@ using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Archives.Tar;
 using SharpCompress.Common;
+using SharpCompress.Readers;
+using SharpCompress.Readers.Arj;
 using SharpCompress.Writers;
 using System.Collections.Concurrent;
 using System.IO;
 using System.IO.MemoryMappedFiles;
+using System.Reflection.PortableExecutable;
 using System.Threading.Channels;
+using System.Windows.Shapes;
 
 namespace ComicViewer.Services
 {
@@ -189,61 +193,65 @@ namespace ComicViewer.Services
             }
             return;
         }
-        private async Task LoadCompressedAsync(MovingFileModel model, CancellationToken cancellation)
+        private async Task LoadCompressedAsync(
+            MovingFileModel model,
+            CancellationToken cancellation)
         {
-            await Task.Run(async () =>
+            using var archive = ArchiveFactory.Open(model.SourcePath);
+            using var reader = archive.ExtractAllEntries();
+
+            using var output = new FileStream(
+                model.DestinationPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 1024 * 1024);
+
+            using var zipWriter = WriterFactory.Open(
+                output,
+                ArchiveType.Zip,
+                new WriterOptions(CompressionType.Deflate));
+
+            var channel = Channel.CreateBounded<(string name, Stream data)>(
+                new BoundedChannelOptions(2)
+                {
+                    FullMode = BoundedChannelFullMode.Wait,
+                    SingleWriter = true,
+                    SingleReader = true
+                });
+
+            // Task B：写 ZIP
+            var writerTask = Task.Run(async () =>
             {
-                using var sourceArchive = ArchiveFactory.Open(model.SourcePath);
-                var entries = sourceArchive.Entries
-                    .Where(e => !e.IsDirectory)
-                    .ToArray();
-
-                using var outputStream = new FileStream(model.DestinationPath, FileMode.Create,
-                                                       FileAccess.Write, FileShare.None,
-                                                       131072);
-                using var zipWriter = WriterFactory.Open(outputStream, ArchiveType.Zip,
-                                                        new WriterOptions(CompressionType.Deflate));
-
-                // 创建Channel作为缓冲区队列
-                var channel = Channel.CreateBounded<(string Key, MemoryStream Stream)>(
-                    new BoundedChannelOptions(2)  // 双缓冲容量
-                    {
-                        FullMode = BoundedChannelFullMode.Wait  // 队列满时等待
-                    });
-
-                // 生产者：读取文件
-                var producer = Task.Run(async () =>
+                await foreach (var (name, data) in channel.Reader.ReadAllAsync(cancellation))
                 {
-                    foreach (var entry in entries)
-                    {
-                        cancellation.ThrowIfCancellationRequested();
-
-                        using var entryStream = entry.OpenEntryStream();
-                        var memoryStream = new MemoryStream();
-                        await entryStream.CopyToAsync(memoryStream, cancellation);
-                        memoryStream.Position = 0;
-
-                        await channel.Writer.WriteAsync((entry.Key!, memoryStream), cancellation);
-                    }
-
-                    channel.Writer.Complete();
-                }, cancellation);
-
-                // 消费者：写入ZIP
-                var consumer = Task.Run(async () =>
-                {
-                    await foreach (var item in channel.Reader.ReadAllAsync(cancellation))
-                    {
-                        zipWriter.Write(item.Key, item.Stream);
-                        item.Stream.Dispose();
-                    }
-                }, cancellation);
-
-                // 等待生产和消费完成
-                await Task.WhenAll(producer, consumer);
-
+                    zipWriter.Write(name, data);
+                    data.Dispose();
+                }
             }, cancellation);
+
+            // Task A：顺序解压（重点）
+            
+            while (reader.MoveToNextEntry())
+            {
+                cancellation.ThrowIfCancellationRequested();
+
+                if (reader.Entry.IsDirectory)
+                    continue;
+
+                using var entryStream = reader.OpenEntryStream();
+                var ms = new MemoryStream((int)reader.Entry.Size);
+                await entryStream.CopyToAsync(ms, cancellation);
+                ms.Position = 0;
+
+                await channel.Writer.WriteAsync((reader.Entry.Key!, ms), cancellation);
+            }
+
+            channel.Writer.Complete();
+            await writerTask;
         }
+
+
         private async Task LoadCMCAsync(MovingFileModel model, CancellationToken cancellation)
         {
             using var archive = TarArchive.Open(model.SourcePath);
