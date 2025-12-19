@@ -269,6 +269,12 @@ namespace ComicViewer
                     // 更新漫画标签
                     // 自动刷新显示
                     comic.Source = dialog.ResultText;
+                    _ = Task.Run(async () =>
+                    {
+                        var c = service.DataService.GetComicData(comic.Key)!;
+                        c.Source = comic.Source;
+                        await service.DataService.UpdateComicAsync(c);
+                    });
 
                     // 显示反馈
                     ShowStatusMessage($"已更新 {comic.Title} 的源", 2000);
