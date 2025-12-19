@@ -57,26 +57,6 @@ namespace ComicViewer
             }
         }
 
-        private void UpdateSaveDirectoryDisplay()
-        {
-            if (SaveDirectoryText != null)
-            {
-                // 显示缩短的路径（如果需要）
-                if (_viewModel.CurrentSaveDirectory.Value.Length > 50)
-                {
-                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory.Value.Substring(0, 20) +
-                                            "..." +
-                                            _viewModel.CurrentSaveDirectory.Value.Substring(_viewModel.CurrentSaveDirectory.Value.Length - 25);
-                    SaveDirectoryText.ToolTip = _viewModel.CurrentSaveDirectory;
-                }
-                else
-                {
-                    SaveDirectoryText.Text = _viewModel.CurrentSaveDirectory;
-                    SaveDirectoryText.ToolTip = null;
-                }
-            }
-        }
-
         private async Task CalculateStorageUsageAsync()
         {
             try
