@@ -26,11 +26,24 @@ namespace ComicViewer.Services
         {
             using (var zipStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
-                // Open the existing ZIP file in Update mode
-                using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Read))
+                try
                 {
-                    // Get the archive-level comment
-                    return archive.Comment;
+                    // Open the existing ZIP file in Update mode
+                    using (var archive = new ZipArchive(zipStream, ZipArchiveMode.Read))
+                    {
+                        // Get the archive-level comment
+                        return archive.Comment;
+                    }
+                }
+                catch (InvalidDataException)
+                {
+                    // invalid format: not ZIP
+                    return String.Empty;
+                }
+                catch (IOException)
+                {
+                    // invalid format: occupied
+                    return String.Empty;
                 }
             }
         }
