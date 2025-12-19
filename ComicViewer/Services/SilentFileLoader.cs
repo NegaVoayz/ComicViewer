@@ -145,15 +145,15 @@ namespace ComicViewer.Services
 
         private async Task MoveComicAsync(MovingFileModel model, CancellationToken cancellation = default)
         {
-            if (!File.Exists(model.SourcePath))
-            {
-                throw new FileNotFoundException("源文件不存在", model.SourcePath);
-            }
-            string srcExt = System.IO.Path.GetExtension(model.SourcePath);
-            string dstExt = System.IO.Path.GetExtension(model.DestinationPath);
-
             try
             {
+                if (!File.Exists(model.SourcePath))
+                {
+                    throw new FileNotFoundException("源文件不存在", model.SourcePath);
+                }
+                string srcExt = System.IO.Path.GetExtension(model.SourcePath);
+                string dstExt = System.IO.Path.GetExtension(model.DestinationPath);
+
                 cancellation.ThrowIfCancellationRequested();
                 if (srcExt == ".cmc")
                 {
@@ -178,15 +178,15 @@ namespace ComicViewer.Services
             {
                 // 其他异常也清理
                 await CleanupFileAsync(model.DestinationPath);
-                // here we don't remove an error task from record
-                //Todo: maybe add retry
+                await service.DataService.DoneMovingTaskAsync(model);
+                await service.DataService.RemoveComicAsync(model.Key);
                 throw;
             }
             finally
             {
                 service.FileService.RemoveComicTempPath(model.Key);
+                await service.DataService.DoneMovingTaskAsync(model);
             }
-            await service.DataService.DoneMovingTaskAsync(model);
             return;
         }
         private async Task LoadCompressedAsync(MovingFileModel model, CancellationToken cancellation)
