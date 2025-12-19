@@ -290,7 +290,10 @@ namespace ComicViewer
         {
             try
             {
-                Clipboard.SetText(comic.Source);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    Clipboard.SetText(comic.Source);
+                });
                 ShowStatusMessage("目录路径已复制到剪贴板", 2000);
             }
             catch (Exception ex)
@@ -646,7 +649,10 @@ namespace ComicViewer
         {
             try
             {
-                Clipboard.SetText(_viewModel.CurrentSaveDirectory);
+                Application.Current.Dispatcher.Invoke(() =>
+                {
+                    Clipboard.SetText(_viewModel.CurrentSaveDirectory);
+                });
                 ShowStatusMessage("目录路径已复制到剪贴板", 2000);
             }
             catch (Exception ex)
