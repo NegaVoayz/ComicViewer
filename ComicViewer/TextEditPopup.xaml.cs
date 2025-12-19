@@ -22,7 +22,7 @@ namespace ComicViewer
 
     public partial class TextEditPopup : Window
     {
-        public string ResultText { get; private set; }
+        public string ResultText { get; private set; } = null!;
         public bool IsConfirmed { get; private set; }
 
         public TextEditPopup(string initialText = "", string title = "编辑文本", bool isMultiLine = false)
@@ -91,14 +91,14 @@ namespace ComicViewer
             }
         }
 
-        private void ConfirmButton_Click(object sender, RoutedEventArgs e)
+        private void ConfirmButton_Click(object? sender, RoutedEventArgs? e)
         {
             ResultText = EditTextBox.Text;
             IsConfirmed = true;
             this.Close();
         }
 
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        private void CancelButton_Click(object? sender, RoutedEventArgs? e)
         {
             IsConfirmed = false;
             this.Close();
