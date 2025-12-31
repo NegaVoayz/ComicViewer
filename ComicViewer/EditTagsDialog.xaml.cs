@@ -1,6 +1,7 @@
 ﻿using ComicViewer.Infrastructure;
 using ComicViewer.Models;
 using ComicViewer.Services;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
@@ -61,22 +62,29 @@ namespace ComicViewer
 
         private void AddTagButton_Click(object sender, RoutedEventArgs e)
         {
-            AddTag();
+            AddTags();
         }
 
-        private void AddTag()
+        private void AddTags()
         {
-            var newTagName = NewTagTextBox.Text.Trim();
-            if (string.IsNullOrWhiteSpace(newTagName))
+            if (string.IsNullOrWhiteSpace(NewTagTextBox.Text))
             {
                 NewTagTextBox.Clear();
                 NewTagTextBox.Focus();
                 return;
             }
-            var newTagTask = service.DataService.AddTagAsync(newTagName);
+            var newTagNames = NewTagTextBox.Text.Split(ComicUtils.DelimiterChars).Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.Trim());
+            var newTagTask = service.DataService.AddTagsAsync(newTagNames);
             newTagTask.Wait();
-            var newTag = newTagTask.Result;
-            _cache.AddTag(newTag);
+            var (newTags, existingTags) = newTagTask.Result;
+            foreach (var tag in newTags)
+            {
+                _cache.AddTag(tag);
+            }
+            foreach (var tag in existingTags)
+            {
+                _cache.SelectTag(tag.Key);
+            }
             NewTagTextBox.Clear();
             NewTagTextBox.Focus();
         }
@@ -107,7 +115,7 @@ namespace ComicViewer
         {
             if (e.Key == Key.Enter && AddTagButton.IsEnabled)
             {
-                AddTag();
+                AddTags();
                 e.Handled = true;
             }
         }

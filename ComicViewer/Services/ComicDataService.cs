@@ -67,30 +67,41 @@ namespace ComicViewer.Services
             return tag;
         }
 
-        public async Task AddTagsAsync(IEnumerable<string> tagNames)
+        public async Task<(List<TagData> newTags, List<TagData> existingTags)> AddTagsAsync(IEnumerable<string> tagNames)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
+            var tagNamesSet = tagNames.ToHashSet();
+
             var existingTags = await context.Tags
-                    .Where(t => tagNames.Contains(t.Name))
+                    .AsNoTracking()
+                    .Where(t => tagNamesSet.Contains(t.Name))
                     .ToDictionaryAsync(t => t.Name, t => t);
+
+            List<TagData> newTags = new(tagNamesSet.Count - existingTags.Count);
 
             foreach (var tagName in tagNames)
             {
-                if (!existingTags.TryGetValue(tagName, out var tag))
+                if (existingTags.TryGetValue(tagName, out var tag))
+                    continue;
+                // 不存在，创建
+                var newTag = new TagData
                 {
-                    // 不存在，创建
-                    var newTag = new TagData
-                    {
-                        Key = ComicUtils.CalculateMD5(tagName),
-                        Name = tagName,
-                        Count = 0
-                    };
-                    context.Tags.Add(newTag);
-                }
+                    Key = ComicUtils.CalculateMD5(tagName),
+                    Name = tagName,
+                    Count = 0
+                };
+                newTags.Add(newTag);
             }
 
+            await context.Tags.AddRangeAsync(newTags);
             await context.SaveChangesAsync();
+
+            foreach (var tag in newTags)
+            {
+                context.Entry(tag).State = EntityState.Detached;
+            }
+            return (newTags, existingTags.Values.ToList());
         }
 
         public async Task AddTagToComicAsync(string comicKey, string tagName)
