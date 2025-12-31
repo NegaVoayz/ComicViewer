@@ -322,17 +322,20 @@ namespace ComicViewer
                 if (dialog.IsConfirmed == true)
                 {
                     var oldAuthors = comic.Author.Split(",").Select(e => e.Trim()).ToHashSet();
-                    var newAuthors = dialog.ResultText.Split(",").Select(e => e.Trim()).ToHashSet();
+                    var newAuthors = dialog.ResultText.Split(ComicUtils.DelimiterChars).Select(e => e.Trim()).ToHashSet();
 
                     var removedAuthors = oldAuthors.Except(newAuthors);
                     var addedAuthors = newAuthors.Except(oldAuthors);
+                    var removedAuthorTagNames = removedAuthors.Select(e => ComicUtils.AuthorPrefix + e);
+                    var addedAuthorTagNames = addedAuthors.Select(e => ComicUtils.AuthorPrefix + e);
+                    var addedAuthorTagKeys = addedAuthorTagNames.Select(e => ComicUtils.CalculateMD5(e));
                     // 更新漫画标签
                     // 自动刷新显示
-                    comic.Author = dialog.ResultText;
+                    comic.Author = string.Join(", ", newAuthors);
 
-                    await service.DataService.RemoveTagsFromComicAsync(comic.Key, removedAuthors);
-                    await service.DataService.AddTagsAsync(addedAuthors);
-                    await service.DataService.AddTagsToComicAsync(comic.Key, addedAuthors);
+                    await service.DataService.RemoveTagsFromComicAsync(comic.Key, removedAuthorTagNames);
+                    await service.DataService.AddTagsAsync(addedAuthorTagNames);
+                    await service.DataService.AddTagsToComicAsync(comic.Key, addedAuthorTagKeys);
 
                     // 显示反馈
                     ShowStatusMessage($"已更新 {comic.Title} 的源", 2000);

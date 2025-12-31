@@ -7,6 +7,7 @@ namespace ComicViewer.Services
 {
     public class ComicUtils
     {
+        public static readonly char[] DelimiterChars = [',', '.', ':', '\t', '/'];
         public const string AuthorPrefix = "@Author:";
         public static void AddCommentToZip(string filePath, string comment)
         {
@@ -77,9 +78,9 @@ namespace ComicViewer.Services
             bool author_part = true;
 
             // 定义所有可能的括号类型
-            char[] openingBrackets = { '[', '【', '〔', '［' };  // 左括号：半角、全角、中文、其他全角
-            char[] closingBrackets = { ']', '】', '〕', '］' };  // 右括号：半角、全角、中文、其他全角
-
+            char[] openingBrackets = { '[', '【', '〔', '［', '(', '（' };  // 左括号：半角、全角、中文、其他全角
+            char[] closingBrackets = { ']', '】', '〕', '］', ')', '）' };  // 右括号：半角、全角、中文、其他全角
+             
             bool insideBrackets = false;
             int bracketDepth = 0;
             char expectedClosingBracket = '\0';

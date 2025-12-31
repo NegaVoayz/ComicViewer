@@ -195,9 +195,9 @@ namespace ComicViewer.Services
             {
                 await context.ComicTags.Where(e => e.ComicKey == comicKey && removedTagKeys.Contains(e.TagKey))
                     .ExecuteDeleteAsync();
+                await context.Tags.Where(e => e.Count > 1 && removedTagKeys.Contains(e.Key)).ForEachAsync(e => e.Count--);
                 await context.Tags.Where(e => e.Count == 0 || e.Count == 1 && removedTagKeys.Contains(e.Key))
                     .ExecuteDeleteAsync();
-                await context.Tags.Where(e => e.Count > 1 && removedTagKeys.Contains(e.Key)).ForEachAsync(e => e.Count--);
             }
 
             await context.SaveChangesAsync();
