@@ -1,6 +1,8 @@
 ﻿<Window x:Class="ComicViewer.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vwp="clr-namespace:WpfToolkit.Controls;assembly=VirtualizingWrapPanel"
+        xmlns:Infrastructure="clr-namespace:ComicViewer.Infrastructure"
         Height="800" Width="1200"
         Title="Comic Viewer"
         Icon="Resources/kris.ico"
@@ -382,21 +384,34 @@
             </Grid.ColumnDefinitions>
 
             <ScrollViewer Grid.Column="0" 
-              x:Name="ComicScrollViewer"
-              VerticalScrollBarVisibility="Auto"
-              PreviewMouseWheel="OnPreviewMouseWheel">
+                          x:Name="ComicScrollViewer"
+                          VerticalScrollBarVisibility="Auto"
+                          PreviewMouseWheel="OnPreviewMouseWheel"
+                          CanContentScroll="True">
 
                 <!-- 使用ItemsControl并绑定到Comics集合 -->
                 <ItemsControl x:Name="ComicItemsControl"
-                  ItemsSource="{Binding Comics}"
-                  HorizontalAlignment="Left"
-                  Margin="10,0">
+                              ItemsSource="{Binding Comics}"
+                              HorizontalAlignment="Left"
+                              Margin="10,0"
+                              ScrollViewer.CanContentScroll="True"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              VirtualizingPanel.ScrollUnit="Item"
+                              VirtualizingPanel.CacheLengthUnit="Page"
+                              VirtualizingPanel.CacheLength="1,2">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
                             <!-- WrapPanel实现网格布局 -->
-                            <WrapPanel Orientation="Horizontal"/>
+                            <vwp:VirtualizingWrapPanel Orientation="Horizontal" SpacingMode="None" StretchItems="False"/>
                         </ItemsPanelTemplate>
                     </ItemsControl.ItemsPanel>
+                    
+                    <ItemsControl.ItemContainerStyle>
+                        <Style TargetType="ContentPresenter">
+                            <Setter Property="Infrastructure:VirtualizationBehavior.AutoUnload" Value="True"/>
+                        </Style>
+                    </ItemsControl.ItemContainerStyle>
 
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>

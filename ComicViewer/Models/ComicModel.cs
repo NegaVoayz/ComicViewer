@@ -4,7 +4,9 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.IO;
 using System.Runtime.CompilerServices;
+using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace ComicViewer.Models
@@ -75,7 +77,7 @@ namespace ComicViewer.Models
             };
         }
     }
-    public class ComicModel : INotifyPropertyChanged
+    public class ComicModel : INotifyPropertyChanged, IUnloadableViewModel
     {
         private readonly ComicService service;
         public required string Key { get; set; }
@@ -92,6 +94,7 @@ namespace ComicViewer.Models
         public int Rating;
         public DateTime CreatedTime;
         public DateTime LastAccess;
+        private static readonly BitmapImage _PlaceholderImage = LoadPlaceholderImage();
 
         public ComicModel(ComicService service)
         {
@@ -170,14 +173,8 @@ namespace ComicViewer.Models
         {
             get
             {
-                // 当访问CoverImage时，如果为空则触发懒加载
-                if (_coverImage == null && _coverTask == null)
-                {
-                    // 开始加载，但不等待
-                    _coverTask = new ObservableTask<BitmapImage>(LoadCoverAsync());
-                    _coverTask.PropertyChanged += OnCoverTaskPropertyChanged;
-                }
-                return _coverImage ?? LoadPlaceholderImage();
+                // 当访问CoverImage时，在视口内会自动加载
+                return _coverImage ?? _PlaceholderImage;
             }
             private set => SetField(ref _coverImage, value);
         }
@@ -186,6 +183,12 @@ namespace ComicViewer.Models
         {
             _tagsTask = new ObservableTask<List<TagData>>(service.DataService.GetTagsOfComic(Key));
             _tagsTask.PropertyChanged += OnTagsTaskPropertyChanged;
+        }
+        public void RefreshCover()
+        {
+            // 开始加载，但不等待
+            _coverTask = new ObservableTask<BitmapImage>(LoadCoverAsync());
+            _coverTask.PropertyChanged += OnCoverTaskPropertyChanged;
         }
 
         private void OnTagsTaskPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -251,11 +254,18 @@ namespace ComicViewer.Models
             {
                 var images = await service.FileService.LoadImageEntriesAsync(this);
                 var coverName = images.First();
-                return await service.FileService.LoadImageAsync(this, coverName) ?? LoadPlaceholderImage();
+
+                var originalBitmap = await service.FileService.LoadImageAsync(this, coverName);
+                if(originalBitmap != null)
+                {
+                    return ComicUtils.ResizeImage(originalBitmap, 350, 280);
+                }
+                return _PlaceholderImage;
+
             });
         }
 
-        private BitmapImage LoadPlaceholderImage()
+        private static BitmapImage LoadPlaceholderImage()
         {
             // 从应用程序资源加载占位图
             var uri = new Uri("pack://application:,,,/Resources/placeholder.jpg");
@@ -266,7 +276,21 @@ namespace ComicViewer.Models
             bitmap.CreateOptions = BitmapCreateOptions.None;
             bitmap.EndInit();
             bitmap.Freeze();
-            return bitmap;
+            return ComicUtils.ResizeImage(bitmap, 350, 280);
+        }
+
+        public void Load()
+        {
+            if (_coverImage == null && _coverTask == null)
+            {
+                RefreshCover();
+            }
+        }
+
+        public void Unload()
+        {
+            _coverImage = null;
+            _coverTask = null;
         }
     }
 }

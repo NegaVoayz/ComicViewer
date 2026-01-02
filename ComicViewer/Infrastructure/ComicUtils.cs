@@ -2,6 +2,8 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Windows.Media;
+using System.Windows.Media.Imaging;
 
 namespace ComicViewer.Services
 {
@@ -231,5 +233,35 @@ namespace ComicViewer.Services
             // Get the path string of the final target
             return finalTarget?.FullName ?? path;
         }
+        public static BitmapImage ResizeImage(BitmapImage originalBitmap, int maxHeight, int maxWidth)
+        {
+            // 计算保持比例的缩放因子
+            double widthRatio = (double)maxWidth / originalBitmap.PixelWidth;
+            double heightRatio = (double)maxHeight / originalBitmap.PixelHeight;
+            double scale = Math.Min(widthRatio, heightRatio);
+
+            if (scale >= 1.0) return originalBitmap;
+
+            var transform = new ScaleTransform(scale, scale);
+            var transformedBitmap = new TransformedBitmap(originalBitmap, transform);
+
+            var result = new BitmapImage();
+            using (var stream = new MemoryStream())
+            {
+                var encoder = new PngBitmapEncoder();
+                encoder.Frames.Add(BitmapFrame.Create(transformedBitmap));
+                encoder.Save(stream);
+                stream.Position = 0;
+
+                result.BeginInit();
+                result.CacheOption = BitmapCacheOption.OnLoad;
+                result.StreamSource = stream;
+                result.EndInit();
+                result.Freeze();
+            }
+
+            return result;
+        }
+
     }
 }

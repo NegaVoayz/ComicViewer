@@ -268,12 +268,12 @@ namespace ComicViewer.Services
                     if (Path.GetExtension(archivePath).Equals(".cmc", StringComparison.OrdinalIgnoreCase))
                     {
                         // 处理.cmc文件（tar包里的漫画包）
-                        return await LoadImageFromCmcAsync(archivePath, entryName);
+                        return LoadImageFromCmc(archivePath, entryName);
                     }
                     else
                     {
                         // 处理普通压缩包
-                        return await LoadImageFromRegularArchiveAsync(archivePath, entryName);
+                        return LoadImageFromRegularArchive(archivePath, entryName);
                     }
                 }
                 finally
@@ -283,7 +283,7 @@ namespace ComicViewer.Services
             });
         }
 
-        private async Task<BitmapImage?> LoadImageFromCmcAsync(string cmcPath, string entryName)
+        private BitmapImage? LoadImageFromCmc(string cmcPath, string entryName)
         {
             using var cmcArchive = ArchiveFactory.Open(cmcPath);
 
@@ -306,38 +306,36 @@ namespace ComicViewer.Services
                 {
                     // 流式读取图片，不缓存整个文件
                     using var imageStream = reader.OpenEntryStream();
-                    using var memoryStream = new MemoryStream();
-                    await imageStream.CopyToAsync(memoryStream);
-                    memoryStream.Position = 0;
-                    return CreateBitmapImage(memoryStream);
+                    return CreateBitmapImage(imageStream);
                 }
             }
 
             return null;
         }
 
-        private async Task<BitmapImage> LoadImageFromRegularArchiveAsync(string archivePath, string entryName)
+        private BitmapImage LoadImageFromRegularArchive(string archivePath, string entryName)
         {
             using var archive = ArchiveFactory.Open(archivePath);
             var entry = archive.Entries.First(e => e.Key == entryName);
 
             using var stream = entry.OpenEntryStream();
-            using var memoryStream = new MemoryStream();
-            await stream.CopyToAsync(memoryStream);
-            memoryStream.Position = 0;
-
-            return CreateBitmapImage(memoryStream);
+            return CreateBitmapImage(stream);
         }
 
         private BitmapImage CreateBitmapImage(Stream stream)
         {
             BitmapImage bitmap = new();
-            bitmap.BeginInit();
-            bitmap.StreamSource = stream;
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.CreateOptions = BitmapCreateOptions.None;
-            bitmap.EndInit();
-            bitmap.Freeze();
+            using (Stream ms = new MemoryStream())
+            {
+                stream.CopyTo(ms);
+                ms.Position = 0;
+                bitmap.BeginInit();
+                bitmap.StreamSource = ms;
+                bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                bitmap.CreateOptions = BitmapCreateOptions.None;
+                bitmap.EndInit();
+                bitmap.Freeze();
+            }
             return bitmap;
         }
 
