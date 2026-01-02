@@ -81,9 +81,7 @@ namespace ComicViewer.Services
             char[] openingBrackets = { '[', '【', '〔', '［', '(', '（' };  // 左括号：半角、全角、中文、其他全角
             char[] closingBrackets = { ']', '】', '〕', '］', ')', '）' };  // 右括号：半角、全角、中文、其他全角
              
-            bool insideBrackets = false;
-            int bracketDepth = 0;
-            char expectedClosingBracket = '\0';
+            Stack<char> expectedClosingBracket = new();
 
             for (int i = 0; i < input.Length; i++)
             {
@@ -91,56 +89,49 @@ namespace ComicViewer.Services
 
                 // 检查是否是左括号
                 int openingIndex = Array.IndexOf(openingBrackets, currentChar);
-                if (openingIndex != -1 && !insideBrackets)
+                if (openingIndex != -1)
                 {
-                    insideBrackets = true;
-                    bracketDepth = 1;
-                    expectedClosingBracket = closingBrackets[openingIndex];
-                    if (author_part)
+                    // 检查嵌套的左括号
+                    if (expectedClosingBracket.Any())
+                    {
+                        currentBracketContent.Append(currentChar);
+                    }
+                    else if (author_part)
                     {
                         currentBracketContent.Append(ComicUtils.AuthorPrefix);
                     }
+                    expectedClosingBracket.Push(closingBrackets[openingIndex]);
                     continue;
+
                 }
 
-                if (author_part && !insideBrackets)
+                if (author_part && !expectedClosingBracket.Any() && !char.IsWhiteSpace(currentChar))
                 {
                     author_part = false;
                 }
 
                 // 检查是否是右括号
-                if (insideBrackets && currentChar == expectedClosingBracket)
+                if (expectedClosingBracket.Any() && currentChar == expectedClosingBracket.Peek())
                 {
-                    bracketDepth--;
-                    if (bracketDepth == 0)
+                    expectedClosingBracket.Pop();
+                    if (expectedClosingBracket.Any())
                     {
-                        // 找到完整的最外层括号对
-                        string content = currentBracketContent.ToString().Trim();
-                        if (!string.IsNullOrEmpty(content))
-                        {
-                            extracted.Add(content);
-                        }
-
-                        currentBracketContent.Clear();
-                        insideBrackets = false;
-                        continue;
-                    }
-                }
-
-                // 检查嵌套的左括号（理论上不会出现，但为了健壮性处理）
-                if (insideBrackets)
-                {
-                    int nestedOpeningIndex = Array.IndexOf(openingBrackets, currentChar);
-                    if (nestedOpeningIndex != -1)
-                    {
-                        bracketDepth++;
                         currentBracketContent.Append(currentChar);
                         continue;
                     }
+                    // 找到完整的最外层括号对
+                    string content = currentBracketContent.ToString().Trim();
+                    if (!string.IsNullOrEmpty(content))
+                    {
+                        extracted.Add(content);
+                    }
+
+                    currentBracketContent.Clear();
+                    continue;
                 }
 
                 // 处理字符
-                if (insideBrackets)
+                if (expectedClosingBracket.Any())
                 {
                     currentBracketContent.Append(currentChar);
                 }
@@ -151,7 +142,7 @@ namespace ComicViewer.Services
             }
 
             // 如果最后还在括号内，将内容添加到剩余字符串中
-            if (insideBrackets)
+            if (expectedClosingBracket.Any())
             {
                 remaining.Append('['); // 添加未匹配的左括号
                 remaining.Append(currentBracketContent.ToString());
