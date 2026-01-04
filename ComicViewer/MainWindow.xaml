@@ -385,9 +385,10 @@
 
             <ScrollViewer Grid.Column="0" 
                           x:Name="ComicScrollViewer"
-                          VerticalScrollBarVisibility="Auto"
+                          VerticalScrollBarVisibility="Visible"
                           PreviewMouseWheel="OnPreviewMouseWheel"
-                          CanContentScroll="True">
+                          CanContentScroll="True"
+                          IsDeferredScrollingEnabled="True">
 
                 <!-- 使用ItemsControl并绑定到Comics集合 -->
                 <ItemsControl x:Name="ComicItemsControl"
@@ -395,6 +396,7 @@
                               HorizontalAlignment="Left"
                               Margin="10,0"
                               ScrollViewer.CanContentScroll="True"
+                              ScrollViewer.IsDeferredScrollingEnabled="True"
                               VirtualizingPanel.IsVirtualizing="True"
                               VirtualizingPanel.VirtualizationMode="Recycling"
                               VirtualizingPanel.ScrollUnit="Item"
@@ -573,7 +575,8 @@
 
                     <!-- 标签列表 -->
                     <ScrollViewer Grid.Row="2"
-                                  VerticalScrollBarVisibility="Auto"
+                                  VerticalScrollBarVisibility="Visible"
+                                  IsDeferredScrollingEnabled="True"
                                   Padding="10,0,10,10">
                         <VirtualizingStackPanel>
                             <ItemsControl x:Name="TagListControlChecked"
