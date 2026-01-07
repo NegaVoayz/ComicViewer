@@ -206,7 +206,7 @@ namespace ComicViewer.Services
 
                 return archive.Entries.Count();
             }
-            catch(FileNotFoundException e)
+            catch(FileNotFoundException)
             {
                 string key = Path.GetFileNameWithoutExtension(archivePath);
                 service.DataService.RemoveComicAsync(key).Wait();
