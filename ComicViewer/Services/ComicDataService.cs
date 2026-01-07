@@ -27,7 +27,6 @@ namespace ComicViewer.Services
                 .UseSqlite($"Data Source={dbPath}")
                 .Options);
 
-
             service.Load.Add(new DAGTask
             {
                 name = "DataService",
