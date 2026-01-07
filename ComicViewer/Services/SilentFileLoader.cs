@@ -3,15 +3,10 @@ using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Archives.Tar;
 using SharpCompress.Common;
-using SharpCompress.Readers;
-using SharpCompress.Readers.Arj;
 using SharpCompress.Writers;
 using System.Collections.Concurrent;
 using System.IO;
 using System.IO.MemoryMappedFiles;
-using System.Reflection.PortableExecutable;
-using System.Threading.Channels;
-using System.Windows.Shapes;
 
 namespace ComicViewer.Services
 {
@@ -212,43 +207,20 @@ namespace ComicViewer.Services
                 ArchiveType.Zip,
                 new WriterOptions(CompressionType.Deflate));
 
-            var channel = Channel.CreateBounded<(string name, Stream data)>(
-                new BoundedChannelOptions(2)
-                {
-                    FullMode = BoundedChannelFullMode.Wait,
-                    SingleWriter = true,
-                    SingleReader = true
-                });
-
-            // Task B：写 ZIP
-            var writerTask = Task.Run(async () =>
-            {
-                await foreach (var (name, data) in channel.Reader.ReadAllAsync(cancellation))
-                {
-                    zipWriter.Write(name, data);
-                    data.Dispose();
-                }
-            }, cancellation);
-
-            // Task A：顺序解压（重点）
+            // 顺序解压
             
             while (reader.MoveToNextEntry())
             {
                 cancellation.ThrowIfCancellationRequested();
 
-                if (reader.Entry.IsDirectory)
+                if (reader.Entry.Size == 0)
+                    continue;
+                if (reader.Entry.Key == null)
                     continue;
 
                 using var entryStream = reader.OpenEntryStream();
-                var ms = new MemoryStream((int)reader.Entry.Size);
-                await entryStream.CopyToAsync(ms, cancellation);
-                ms.Position = 0;
-
-                await channel.Writer.WriteAsync((reader.Entry.Key!, ms), cancellation);
+                zipWriter.Write(reader.Entry.Key, entryStream);
             }
-
-            channel.Writer.Complete();
-            await writerTask;
         }
 
 
