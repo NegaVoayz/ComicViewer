@@ -55,8 +55,10 @@ namespace ComicViewer
             InputBindings.AddRange(new[]
             {
                 new KeyBinding(new RelayCommand(() => PreviousPage()), new KeyGesture(Key.Left, ModifierKeys.None)),
+                new KeyBinding(new RelayCommand(() => PreviousPage()), new KeyGesture(Key.PageUp, ModifierKeys.None)),
                 new KeyBinding(new RelayCommand(() => PreviousPage()), new KeyGesture(Key.Back, ModifierKeys.None)),
                 new KeyBinding(new RelayCommand(() => NextPage()), new KeyGesture(Key.Right, ModifierKeys.None)),
+                new KeyBinding(new RelayCommand(() => NextPage()), new KeyGesture(Key.PageDown, ModifierKeys.None)),
                 new KeyBinding(new RelayCommand(() => NextPage()), new KeyGesture(Key.Space, ModifierKeys.None)),
                 new KeyBinding(new RelayCommand(() => FirstPage()), new KeyGesture(Key.Home, ModifierKeys.None)),
                 new KeyBinding(new RelayCommand(() => LastPage()), new KeyGesture(Key.End, ModifierKeys.None)),
