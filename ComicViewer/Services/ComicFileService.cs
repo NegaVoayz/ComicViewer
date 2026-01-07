@@ -200,9 +200,19 @@ namespace ComicViewer.Services
 
         private int CountComicLengthFromArchive(string archivePath)
         {
-            using var archive = ArchiveFactory.Open(archivePath);
+            try
+            {
+                using var archive = ArchiveFactory.Open(archivePath);
 
-            return archive.Entries.Count();
+                return archive.Entries.Count();
+            }
+            catch(FileNotFoundException e)
+            {
+                string key = Path.GetFileNameWithoutExtension(archivePath);
+                service.DataService.RemoveComicAsync(key).Wait();
+                service.Cache.RemoveComic(key).Wait();
+                return 0;
+            }
         }
 
         public async Task<List<string>> LoadImageEntriesAsync(ComicModel comic)
