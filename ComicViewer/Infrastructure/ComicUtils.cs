@@ -9,7 +9,9 @@ namespace ComicViewer.Services
 {
     public class ComicUtils
     {
-        public static readonly char[] DelimiterChars = [',', '.', ':', '\t', '/'];
+        public static readonly char[] AuthorDelimiterChars = [',', ';', '\t', '/'];
+        public static readonly char[] TagDelimiterChars = [',', ';', '\t', ' '];
+        public static readonly char[] TagAliasChars = ['/'];
         public const string AuthorPrefix = "@Author:";
         public static void AddCommentToZip(string filePath, string comment)
         {

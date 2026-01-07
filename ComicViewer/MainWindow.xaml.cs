@@ -322,7 +322,7 @@ namespace ComicViewer
                 if (dialog.IsConfirmed == true)
                 {
                     var oldAuthors = comic.Author.Split(",").Select(e => e.Trim()).ToHashSet();
-                    var newAuthors = dialog.ResultText.Split(ComicUtils.DelimiterChars).Select(e => e.Trim()).ToHashSet();
+                    var newAuthors = dialog.ResultText.Split(ComicUtils.AuthorDelimiterChars).Select(e => e.Trim()).ToHashSet();
 
                     var removedAuthors = oldAuthors.Except(newAuthors);
                     var addedAuthors = newAuthors.Except(oldAuthors);

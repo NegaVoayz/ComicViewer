@@ -41,13 +41,124 @@ namespace ComicViewer.Services
             await context.SaveChangesAsync();
         }
 
+        public async Task<List<TagAlias>> GetAllTagAliasesAsync()
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            return await context.TagAliases
+                .AsNoTracking()  // 提高性能，不需要追踪变更
+                .ToListAsync();
+        }
+
+        /**
+         * get the standard tag name of an alias
+         * returns null if not found
+         */
+        public async Task<string?> GetTagNameFromAliasAsync(string tagName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            var aliasEntry = context.TagAliases.FirstOrDefault(e => e.Alias == tagName);
+            string standardName;
+            if (aliasEntry == null)
+                standardName =  tagName;
+            else
+                standardName = aliasEntry.Name;
+            string standardKey = ComicUtils.CalculateMD5(standardName);
+            if (context.Tags.Any(e => e.Key == standardKey))
+                return standardName;
+            return null;
+        }
+        public async Task<bool> AddTagAliasAsync(string tagAlias, string tagName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            if (context.TagAliases.Any(e => e.Alias == tagAlias))
+                return false;
+            var standardName = await GetTagNameFromAliasAsync(tagName);
+            if (standardName == null)
+                return false;
+            await context.TagAliases.AddAsync(new TagAlias
+            {
+                Alias = tagAlias,
+                Name = standardName
+            });
+            await context.SaveChangesAsync();
+            return true;
+        }
+        public async Task ReplaceTagAsync(string deprecatedTagName, string standardTagName)
+        {
+            await ReplaceTagAliasAsync(deprecatedTagName, standardTagName);
+            await ReplaceComicTagAsync(
+                ComicUtils.CalculateMD5(deprecatedTagName),
+                ComicUtils.CalculateMD5(standardTagName));
+        }
+        private async Task ReplaceTagAliasAsync(string deprecatedTagName, string standardTagName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            await context.TagAliases.Where(e => e.Name == deprecatedTagName)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.Name, standardTagName));
+            await context.SaveChangesAsync();
+        }
+        private async Task ReplaceComicTagAsync(string deprecatedTagKey, string standardTagKey)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+            using var transaction = await context.Database.BeginTransactionAsync();
+
+            try
+            {
+                if (!context.Tags.Any(e => e.Key == standardTagKey))
+                    throw new InvalidOperationException();
+
+                // 1. 查询需要迁移的记录
+                var comicsToMigrate = context.ComicTags
+                    .Where(e => e.TagKey == deprecatedTagKey)
+                    .Select(e => e.ComicKey)
+                    .ToList();
+
+                // 2. 查询已存在的标准TagKey记录
+                var existingStandardTags = context.ComicTags
+                    .Where(e => e.TagKey == standardTagKey)
+                    .Select(e => e.ComicKey)
+                    .ToHashSet();
+
+                // 3. 删除旧记录
+                int deletedCount = context.ComicTags
+                    .Where(e => e.TagKey == deprecatedTagKey)
+                    .ExecuteDelete();
+
+                // 4. 只插入不存在的记录
+                var tagsToInsert = comicsToMigrate
+                    .Where(c => !existingStandardTags.Contains(c))
+                    .Select(c => new ComicTag
+                    {
+                        ComicKey = c,
+                        TagKey = standardTagKey
+                    })
+                    .ToList();
+
+                if (tagsToInsert.Any())
+                {
+                    context.ComicTags.AddRange(tagsToInsert);
+                    context.Tags.Where(e => e.Key == standardTagKey).ExecuteUpdate(setters =>
+                        setters.SetProperty(e => e.Count, e => e.Count + tagsToInsert.Count));
+                }
+                context.Tags.Where(e => e.Key == deprecatedTagKey).ExecuteDelete();
+                await context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+                return;
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+        }
         public async Task<TagData> AddTagAsync(string tagName)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
             var tagKey = ComicUtils.CalculateMD5(tagName);
 
-            var existingTag = await context.Tags.FirstOrDefaultAsync(t => t.Key == tagKey);
+            var existingTag = await context.Tags.AsNoTracking().FirstOrDefaultAsync(t => t.Key == tagKey);
 
             if (existingTag != null)
             {
@@ -59,48 +170,31 @@ namespace ComicViewer.Services
                 Name = tagName,
                 Count = 0
             };
-            await context.Tags.AddAsync(tag);
+            context.Tags.Add(tag);
 
             await context.SaveChangesAsync();
 
-            return tag;
+            var ret = context.Tags.AsNoTracking().FirstOrDefault(e => e.Key == tagKey);
+            if(ret == null)
+            {
+                throw new InvalidDataException();
+            }
+
+            return ret;
         }
 
-        public async Task<(List<TagData> newTags, List<TagData> existingTags)> AddTagsAsync(IEnumerable<string> tagNames)
+        public async Task AddTagsAsync(IEnumerable<string> tagNames)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
 
-            var tagNamesSet = tagNames.ToHashSet();
-
-            var existingTags = await context.Tags
-                    .AsNoTracking()
-                    .Where(t => tagNamesSet.Contains(t.Name))
-                    .ToDictionaryAsync(t => t.Name, t => t);
-
-            List<TagData> newTags = new(tagNamesSet.Count - existingTags.Count);
-
-            foreach (var tagName in tagNames)
-            {
-                if (existingTags.TryGetValue(tagName, out var tag))
-                    continue;
-                // 不存在，创建
-                var newTag = new TagData
-                {
-                    Key = ComicUtils.CalculateMD5(tagName),
-                    Name = tagName,
-                    Count = 0
-                };
-                newTags.Add(newTag);
-            }
-
-            await context.Tags.AddRangeAsync(newTags);
+            await context.Tags.AddRangeAsync(
+                tagNames.Select(e => new TagData
+                    {
+                        Key = ComicUtils.CalculateMD5(e),
+                        Name = e,
+                        Count = 0
+                    }));
             await context.SaveChangesAsync();
-
-            foreach (var tag in newTags)
-            {
-                context.Entry(tag).State = EntityState.Detached;
-            }
-            return (newTags, existingTags.Values.ToList());
         }
 
         public async Task AddTagToComicAsync(string comicKey, string tagName)

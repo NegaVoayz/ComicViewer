@@ -12,6 +12,7 @@ namespace ComicViewer.Database
         public DbSet<ComicData> Comics { get; set; }
         public DbSet<TagData> Tags { get; set; }
         public DbSet<ComicTag> ComicTags { get; set; }
+        public DbSet<TagAlias> TagAliases { get; set; }
 
         public ComicContext() { }
 
@@ -32,6 +33,23 @@ namespace ComicViewer.Database
         }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
+            // 配置 TagAlias 同义词表
+            modelBuilder.Entity<TagAlias>(entity =>
+            {
+                entity.ToTable("TagAliases");
+
+                entity.HasKey(e => e.Alias);
+
+                entity.Property(e => e.Alias)
+                      .HasColumnName("Alias")
+                      .HasColumnType("TEXT")
+                      .IsRequired();
+
+                entity.Property(e => e.Name)
+                      .HasColumnName("Name")
+                      .HasColumnType("TEXT")
+                      .IsRequired();
+            });
             // 配置 MovingFileModel 静默更新表
             modelBuilder.Entity<MovingFileModel>(entity =>
             {
