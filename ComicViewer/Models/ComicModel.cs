@@ -1,6 +1,7 @@
 ﻿using ComicViewer.Infrastructure;
 using ComicViewer.Services;
 using Microsoft.EntityFrameworkCore;
+using SharpCompress.Compressors.Xz;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
@@ -255,12 +256,8 @@ namespace ComicViewer.Models
                 var images = await service.FileService.LoadImageEntriesAsync(this);
                 var coverName = images.First();
 
-                var originalBitmap = await service.FileService.LoadImageAsync(this, coverName);
-                if(originalBitmap != null)
-                {
-                    return ComicUtils.ResizeImage(originalBitmap, 350, 280);
-                }
-                return _PlaceholderImage;
+                var cover = await service.FileService.LoadImageAsync(this, coverName, 350, 280);
+                return cover ?? _PlaceholderImage;
 
             });
         }
@@ -269,14 +266,49 @@ namespace ComicViewer.Models
         {
             // 从应用程序资源加载占位图
             var uri = new Uri("pack://application:,,,/Resources/placeholder.jpg");
-            BitmapImage bitmap = new BitmapImage();
-            bitmap.BeginInit();
-            bitmap.UriSource = uri;
-            bitmap.CacheOption = BitmapCacheOption.OnLoad;
-            bitmap.CreateOptions = BitmapCreateOptions.None;
-            bitmap.EndInit();
-            bitmap.Freeze();
-            return ComicUtils.ResizeImage(bitmap, 350, 280);
+
+            int originalWidth, originalHeight;
+            {
+                // 首先加载原始图像
+                BitmapImage originalBitmap = new();
+                originalBitmap.BeginInit();
+                originalBitmap.UriSource = uri;
+                originalBitmap.CacheOption = BitmapCacheOption.None; // only load size info
+                originalBitmap.CreateOptions = BitmapCreateOptions.None;
+                originalBitmap.EndInit();
+                originalWidth = originalBitmap.PixelWidth;
+                originalHeight = originalBitmap.PixelHeight;
+            }
+
+            // 计算缩放比例
+            double widthRatio = (double)280 / originalWidth;
+            double heightRatio = (double)350 / originalHeight;
+
+            // 选择较小的比例以确保图像完全在限制内
+            double ratio = Math.Min(Math.Min(widthRatio, heightRatio), 1.0);
+
+            // 计算新尺寸
+            int newWidth = (int)(originalWidth * ratio);
+            int newHeight = (int)(originalHeight * ratio);
+
+            // 确保至少为1像素
+            newWidth = Math.Max(1, newWidth);
+            newHeight = Math.Max(1, newHeight);
+
+            // 创建新的BitmapImage并应用缩放
+            BitmapImage resizedBitmap = new();
+            resizedBitmap.BeginInit();
+            resizedBitmap.DecodePixelWidth = newWidth;
+            resizedBitmap.DecodePixelHeight = newHeight;
+
+            // 重新读取
+            resizedBitmap.UriSource = uri;
+            resizedBitmap.CacheOption = BitmapCacheOption.OnLoad;
+            resizedBitmap.CreateOptions = BitmapCreateOptions.None;
+            resizedBitmap.EndInit();
+            resizedBitmap.Freeze();
+
+            return resizedBitmap;
         }
 
         public void Load()

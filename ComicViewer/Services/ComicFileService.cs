@@ -257,24 +257,29 @@ namespace ComicViewer.Services
                    ext == ".bmp" || ext == ".gif" || ext == ".webp";
         }
 
-        public async Task<BitmapImage?> LoadImageAsync(ComicModel comic, string entryName)
+        public async Task<BitmapImage?> LoadImageAsync(ComicModel comic, string entryName, int maxHeight = 2560, int maxWidth = 2560)
         {
             return await Task.Run(async () =>
             {
                 var archivePath = GetComicPath(comic.Key);
-
                 try
                 {
+                    MemoryStream? stream;
                     if (Path.GetExtension(archivePath).Equals(".cmc", StringComparison.OrdinalIgnoreCase))
                     {
                         // 处理.cmc文件（tar包里的漫画包）
-                        return LoadImageFromCmc(archivePath, entryName);
+                        stream = LoadImageFromCmc(archivePath, entryName);
                     }
                     else
                     {
                         // 处理普通压缩包
-                        return LoadImageFromRegularArchive(archivePath, entryName);
+                        stream = LoadImageFromRegularArchive(archivePath, entryName);
                     }
+                    if (stream == null)
+                    {
+                        return null;
+                    }
+                    return CreateBitmapImage(stream, maxHeight, maxWidth);
                 }
                 finally
                 {
@@ -283,7 +288,7 @@ namespace ComicViewer.Services
             });
         }
 
-        private BitmapImage? LoadImageFromCmc(string cmcPath, string entryName)
+        private MemoryStream? LoadImageFromCmc(string cmcPath, string entryName)
         {
             using var cmcArchive = ArchiveFactory.Open(cmcPath);
 
@@ -306,51 +311,74 @@ namespace ComicViewer.Services
                 {
                     // 流式读取图片，不缓存整个文件
                     using var imageStream = reader.OpenEntryStream();
-                    return CreateBitmapImage(imageStream);
+                    var ms = new MemoryStream();
+                    imageStream.CopyTo(ms);
+                    ms.Position = 0;
+                    return ms;
                 }
             }
 
             return null;
         }
 
-        private BitmapImage LoadImageFromRegularArchive(string archivePath, string entryName)
+        private MemoryStream LoadImageFromRegularArchive(string archivePath, string entryName)
         {
             using var archive = ArchiveFactory.Open(archivePath);
             var entry = archive.Entries.First(e => e.Key == entryName);
 
-            using var stream = entry.OpenEntryStream();
-            return CreateBitmapImage(stream);
+            using var imageStream = entry.OpenEntryStream();
+            var ms = new MemoryStream();
+            imageStream.CopyTo(ms);
+            ms.Position = 0;
+            return ms;
         }
 
-        private BitmapImage CreateBitmapImage(Stream stream)
+        private BitmapImage CreateBitmapImage(MemoryStream stream, int maxHeight, int maxWidth)
         {
-            BitmapImage bitmap = new();
-            using (Stream ms = new MemoryStream())
+            int originalWidth, originalHeight;
             {
-                stream.CopyTo(ms);
-                ms.Position = 0;
-                bitmap.BeginInit();
-                bitmap.StreamSource = ms;
-                bitmap.CacheOption = BitmapCacheOption.OnLoad;
-                bitmap.CreateOptions = BitmapCreateOptions.None;
-                bitmap.EndInit();
-                bitmap.Freeze();
+                // 首先加载原始图像
+                stream.Position = 0;
+                BitmapImage originalBitmap = new();
+                originalBitmap.BeginInit();
+                originalBitmap.StreamSource = stream;
+                originalBitmap.CacheOption = BitmapCacheOption.None; // only load size info
+                originalBitmap.CreateOptions = BitmapCreateOptions.None;
+                originalBitmap.EndInit();
+                originalWidth = originalBitmap.PixelWidth;
+                originalHeight = originalBitmap.PixelHeight;
             }
-            return bitmap;
-        }
 
-        private bool IsComicArchiveFile(string fileName)
-        {
-            var comicExtensions = new[]
-            {
-                ".zip", ".cbz",
-                ".rar", ".cbr",
-                ".7z", ".cb7",
-                ".tar", ".cbt"
-            };
+            // 计算缩放比例
+            double widthRatio = (double)maxWidth / originalWidth;
+            double heightRatio = (double)maxHeight / originalHeight;
 
-            var ext = System.IO.Path.GetExtension(fileName).ToLowerInvariant();
-            return comicExtensions.Contains(ext);
+            // 选择较小的比例以确保图像完全在限制内
+            double ratio = Math.Min(Math.Min(widthRatio, heightRatio), 1.0);
+
+            // 计算新尺寸
+            int newWidth = (int)(originalWidth * ratio);
+            int newHeight = (int)(originalHeight * ratio);
+
+            // 确保至少为1像素
+            newWidth = Math.Max(1, newWidth);
+            newHeight = Math.Max(1, newHeight);
+
+            // 创建新的BitmapImage并应用缩放
+            BitmapImage resizedBitmap = new();
+            resizedBitmap.BeginInit();
+            resizedBitmap.DecodePixelWidth = newWidth;
+            resizedBitmap.DecodePixelHeight = newHeight;
+
+            // 重新读取流（需要重置流位置）
+            stream.Position = 0;
+            resizedBitmap.StreamSource = stream;
+            resizedBitmap.CacheOption = BitmapCacheOption.OnLoad;
+            resizedBitmap.CreateOptions = BitmapCreateOptions.None;
+            resizedBitmap.EndInit();
+            resizedBitmap.Freeze();
+
+            return resizedBitmap;
         }
 
         public (int fileCount, List<string>? fileNames) GetComicZipInfo(string cmcPath,
