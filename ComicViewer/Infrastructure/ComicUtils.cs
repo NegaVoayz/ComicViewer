@@ -82,7 +82,7 @@ namespace ComicViewer.Services
             // 定义所有可能的括号类型
             char[] openingBrackets = { '[', '【', '〔', '［', '(', '（' };  // 左括号：半角、全角、中文、其他全角
             char[] closingBrackets = { ']', '】', '〕', '］', ')', '）' };  // 右括号：半角、全角、中文、其他全角
-             
+
             Stack<char> expectedClosingBracket = new();
 
             for (int i = 0; i < input.Length; i++)

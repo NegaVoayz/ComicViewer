@@ -1,13 +1,10 @@
 ﻿using ComicViewer.Infrastructure;
 using ComicViewer.Services;
 using Microsoft.EntityFrameworkCore;
-using SharpCompress.Compressors.Xz;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.IO;
 using System.Runtime.CompilerServices;
-using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 namespace ComicViewer.Models

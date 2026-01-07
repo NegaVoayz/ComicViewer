@@ -1,7 +1,6 @@
 ﻿using ComicViewer.Infrastructure;
 using ComicViewer.Models;
 using ComicViewer.Services;
-using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;

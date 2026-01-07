@@ -1,7 +1,6 @@
 ﻿using ComicViewer.Infrastructure;
 using ComicViewer.Models;
 using DynamicData;
-using ReactiveUI;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;

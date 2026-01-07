@@ -2,7 +2,6 @@
 using ComicViewer.Models;
 using DynamicData;
 using DynamicData.Binding;
-using ReactiveUI;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -64,7 +63,7 @@ namespace ComicViewer.Services
                 .Filter(_searchNameSubject.Select(CreateNameFilter))
                 .Transform(data => ConvertComicDataToModel(data))
                 .Sort(_orderSubject.Select(CreateComparer))
-                .ObserveOn(RxApp.MainThreadScheduler)
+                //.ObserveOn(DispatcherScheduler.Current)  // 已移除，warning太多
                 .Bind(out _comics)
                 .Subscribe();
 
