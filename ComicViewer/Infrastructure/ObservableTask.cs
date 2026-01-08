@@ -6,19 +6,26 @@ namespace ComicViewer.Infrastructure
     public class ObservableTask<T> : INotifyPropertyChanged
     {
         private readonly Task<T> _task;
+        private readonly object _lock = new object();
+        private PropertyChangedEventArgs _resultArgs;
+        private PropertyChangedEventArgs _completedArgs;
+        private PropertyChangedEventArgs _faultedArgs;
 
-        // Public properties remain the same, they reflect the underlying task state
+        // Public properties. they reflect the underlying task state
         public T? Result => _task.IsCompletedSuccessfully ? _task.Result : default;
         public bool IsCompleted => _task.IsCompleted;
         public bool IsFaulted => _task.IsFaulted;
 
         public ObservableTask(Task<T> task)
         {
-            _task = task ?? throw new ArgumentNullException(nameof(task));
-
-            // --- THE CRITICAL FIX ---
+            _task = task;
+            _resultArgs = new PropertyChangedEventArgs(nameof(Result));
+            _completedArgs = new PropertyChangedEventArgs(nameof(IsCompleted));
+            _faultedArgs = new PropertyChangedEventArgs(nameof(IsFaulted));
             // 1. Get the current SynchronizationContext (usually the UI thread)
-            var scheduler = TaskScheduler.FromCurrentSynchronizationContext();
+            var scheduler = SynchronizationContext.Current != null
+                ? TaskScheduler.FromCurrentSynchronizationContext()
+                : TaskScheduler.Current;
 
             // 2. Attach a continuation that executes regardless of success or failure.
             // This continuation is scheduled immediately and is guaranteed to run 
@@ -26,9 +33,9 @@ namespace ComicViewer.Infrastructure
             _task.ContinueWith(t =>
             {
                 // Update all observable properties on the synchronization context
-                OnPropertyChanged(nameof(Result));
-                OnPropertyChanged(nameof(IsCompleted));
-                OnPropertyChanged(nameof(IsFaulted));
+                _propertyChanged?.Invoke(this, _resultArgs);
+                _propertyChanged?.Invoke(this, _completedArgs);
+                _propertyChanged?.Invoke(this, _faultedArgs);
 
                 // Note: If you have IsSuccessfullyCompleted or Error properties, 
                 // you should notify them here too.
@@ -38,15 +45,39 @@ namespace ComicViewer.Infrastructure
                scheduler); // Force the execution onto the UI/context thread
         }
 
-        // Original WatchTaskAsync method is no longer needed/used.
-        // private async Task WatchTaskAsync(Task task) { ... } 
-
         // INotifyPropertyChanged Implementation
-        public event PropertyChangedEventHandler? PropertyChanged;
+        private event PropertyChangedEventHandler? _propertyChanged;
+        public event PropertyChangedEventHandler? PropertyChanged
+        {
+            add
+            {
+                lock (_lock)
+                {
+                    // 添加订阅者
+                    _propertyChanged += value;
+
+                    // 如果任务已完成且配置为立即通知
+                    if (_task.IsCompleted && value != null)
+                    {
+                        // 立即通知新订阅者
+                        value(this, _resultArgs);
+                        value(this, _completedArgs);
+                        value(this, _faultedArgs);
+                    }
+                }
+            }
+            remove
+            {
+                lock (_lock)
+                {
+                    _propertyChanged -= value;
+                }
+            }
+        }
         protected virtual void OnPropertyChanged([CallerMemberName] string? propertyName = null)
         {
             // This check is important: only invoke if there are subscribers
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+            _propertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
