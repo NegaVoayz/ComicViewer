@@ -38,8 +38,10 @@ namespace ComicViewer.Services
             {
                 comicMetadata = ComicUtils.CreateComicDataFromFilePath(filePath);
             }
+            var mappedTags = await GetMappedTagNames(comicMetadata.Tags);
+            comicMetadata.Tags = [.. mappedTags.resolvedTags];
             comic = comicMetadata.ToComicData();
-            await service.DataService.AddTagsAsync(comicMetadata.Tags);
+            await service.DataService.AddTagsAsync(mappedTags.newTags);
 
             if (service.DataService.FindComic(comic.Key)) return null;
 
@@ -78,6 +80,22 @@ namespace ComicViewer.Services
                     DestinationPath = destFilePath
                 });
             }
+        }
+
+        private async Task<(IEnumerable<string> resolvedTags, IEnumerable<string> newTags)> GetMappedTagNames(IEnumerable<string> initialTags)
+        {
+            HashSet<string> resolvedTags = new();
+            HashSet<string> newTags = new();
+            foreach (var tag in initialTags)
+            {
+                if (resolvedTags.Contains(tag))
+                    continue;
+                var standardTag = await service.DataService.FindTagNameByAliasAsync(tag);
+                if(standardTag == null)
+                    newTags.Add(tag);
+                resolvedTags.Add(standardTag ?? tag);
+            }
+            return (resolvedTags, newTags);
         }
     }
 }
