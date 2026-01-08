@@ -18,6 +18,7 @@ namespace ComicViewer
         private readonly TagViewModel _viewModel;
         private readonly TagCache _cache;
         private HashSet<string> _newTagNames = new();
+        private HashSet<TagAlias> _newAliasEntries = new();
 
         public bool Changed { get; private set; } = false;
 
@@ -77,31 +78,62 @@ namespace ComicViewer
             foreach (var name in newTagNames)
             {
                 var tokens = name.Split(ComicUtils.TagAliasChars).Select(e => e.Trim());
+                HashSet<string> newAliases = new();
                 string? existingName = null;
                 foreach (var token in tokens)
                 {
-                    var standardTagTask = service.DataService.GetTagNameFromAliasAsync(token);
-                    standardTagTask.Wait();
-                    var standardTagName = standardTagTask.Result;
-                    if (standardTagName != null)
+                    var resolveTagName = service.DataService.FindTagNameByAliasAsync(token);
+                    resolveTagName.Wait();
+                    var resolvedTagName = resolveTagName.Result;
+
+                    // check new aliases and new tag names if not found
+                    if (resolvedTagName == null)
                     {
-                        if(existingName == null)
+                        var newAlias = _newAliasEntries.FirstOrDefault(e => e.Alias == token);
+                        // if still not found in new aliases, check new tag names
+                        if (newAlias == null)
                         {
-                            existingName = standardTagName;
-                            continue;
+                            // if still not found in new tag names, treat it as a new tag name
+                            if (!_newTagNames.Contains(token))
+                            {
+                                newAliases.Add(token);
+                                continue;
+                            }
+                            resolvedTagName = token;
                         }
-                        if(existingName == standardTagName)
-                            continue;
-                        // here means some tags are the same in meaning, and they both exists
-                        service.DataService.AddTagAliasAsync(standardTagName, existingName).Wait();
-                        service.DataService.ReplaceTagAsync(standardTagName, existingName).Wait();
+                        else
+                        {
+                            // found in new aliases, the name must exist
+                            resolvedTagName = newAlias.Name;
+                        }
                     }
+
+                    // first existing name found
+                    if (existingName == null)
+                    {
+                        existingName = resolvedTagName;
+                        continue;
+                    }
+
+                    // skip if both are the same
+                    if (existingName == resolvedTagName)
+                        continue;
+
+                    // here means some tags are the same in meaning, and they both exists
+                    // and we take the first one as the standard name
+                    newAliases.Add(resolvedTagName);
                 }
 
-                // if no existing tag found, create a new one
+                // if no existing tags found, create a new one
                 if (existingName == null)
                 {
+                    // take the first alias as the standard name
+                    // since here is no existing name,
+                    // all the aliases are exactly the tokens we got, unmapped
                     existingName = tokens.First();
+                    // remember to remove the standard name from the aliases!
+                    newAliases.Remove(existingName);
+
                     _newTagNames.Add(existingName);
                     var tag = new TagData
                     {
@@ -116,17 +148,35 @@ namespace ComicViewer
                     _cache.SelectTag(ComicUtils.CalculateMD5(existingName));
                 }
 
-
                 // add aliases
-                foreach (var token in tokens)
-                {
-                    if(token == existingName)
-                        continue;
-                    service.DataService.AddTagAliasAsync(token, existingName).Wait();
-                }
+                AddAliases(newAliases, existingName);
             }
             NewTagTextBox.Clear();
             NewTagTextBox.Focus();
+        }
+
+        private void AddAliases(HashSet<string> aliasNames, string standardName)
+        {
+            // get affected entries "A -> B" when there's a newly added "B -> C" entry.
+            var affectedEntries = _newAliasEntries.Where(e => aliasNames.Contains(e.Name)).ToList();
+            // remove "A -> B" entries,
+            _newAliasEntries.ExceptWith(affectedEntries);
+            // remove B if in new tag names
+            _newTagNames.ExceptWith(aliasNames);
+            // and replace them with "A -> C" entries.
+            _newAliasEntries.UnionWith(
+                affectedEntries.Select(entry => new TagAlias
+                {
+                    Alias = entry.Alias,
+                    Name = standardName
+                }));
+            // add new "B -> C" entries.
+            _newAliasEntries.UnionWith(
+                aliasNames.Select(token => new TagAlias
+                {
+                    Alias = token,
+                    Name = standardName
+                }));
         }
         private void TagCheckBox_Checked(object sender, RoutedEventArgs e)
         {
@@ -164,6 +214,10 @@ namespace ComicViewer
         {
             await service.DataService.AddTagsAsync(_newTagNames);
             await service.DataService.ChangeTagsToComicAsync(_comic.Key, _viewModel.SelectedTags.Select(e => e.Key));
+            if (_newAliasEntries.Any())
+            {
+                await service.DataService.AddTagAliasesAsync(_newAliasEntries);
+            }
             Changed = true;
             Close();
         }
