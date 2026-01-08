@@ -72,12 +72,14 @@ namespace ComicViewer.Services
                 .AutoRefresh(tag => tag.Count)  // 监听 Count 变化
                 .Filter(_searchTagNameSubject.Select(CreateTagNameFilter))
                 .Except(_selectedTagsSet.Connect())
+                .Sort(CreateTagComparer())
                 .Bind(out _unselectedTags)
                 .Subscribe();
 
             // 已选中的标签
             _selectedTagsSet.Connect()
                 .AutoRefresh(tag => tag.Count)  // 监听 Count 变化
+                .Sort(CreateTagComparer())
                 .Bind(out _selectedTags)
                 .Subscribe();
 
@@ -118,6 +120,12 @@ namespace ComicViewer.Services
                 list.Clear();
                 list.AddRange(tags);
             });
+        }
+        private IComparer<TagModel> CreateTagComparer()
+        {
+            return SortExpressionComparer<TagModel>
+                .Descending(m => m.Count)
+                .ThenByAscending(m => m.Name);
         }
 
         private Func<ComicData, bool> CreateNameFilter(string searchName)
