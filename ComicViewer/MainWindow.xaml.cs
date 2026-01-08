@@ -399,11 +399,12 @@ namespace ComicViewer
                 // 发布删除事件
                 ComicEvents.PublishComicDeleted(comic.Key);
                 // 删除漫画文件
-                _ = service.FileService.RemoveComicAsync(comic.Key);
-                // 从UI移除
-                _ = service.Cache.RemoveComic(comic.Key);
-                // remove comic record
+                await service.FileService.RemoveComicAsync(comic.Key);
+                // 删除数据库记录
                 await service.DataService.RemoveComicAsync(comic.Key);
+                // 从UI移除
+                await service.Cache.RemoveComic(comic.Key);
+                // 刷新标签
                 await service.Cache.RefreshTagsAsync();
             }
         }
