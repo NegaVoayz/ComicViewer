@@ -250,11 +250,21 @@ namespace ComicViewer.Models
         {
             return await Task.Run(async () =>
             {
+                if(service.CoverCache.TryGet(Key, out var cachedCover))
+                {
+                    return cachedCover;
+                }
+
                 var images = await service.FileService.LoadImageEntriesAsync(this);
                 var coverName = images.First();
 
                 var cover = await service.FileService.LoadImageAsync(this, coverName, 350, 280);
-                return cover ?? _PlaceholderImage;
+                if (cover != null)
+                {
+                    service.CoverCache.Put(Key, cover);
+                    return cover;
+                }
+                return _PlaceholderImage;
 
             });
         }

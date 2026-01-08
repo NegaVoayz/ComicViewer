@@ -14,6 +14,7 @@ namespace ComicViewer.Services
         public ComicFileService FileService { get; }
         public ComicLoader Loader { get; }
         public SilentFileLoader FileLoader { get; }
+        public LRUCache<string, System.Windows.Media.Imaging.BitmapImage> CoverCache { get; }
 
         public ComicService()
         {
@@ -23,6 +24,7 @@ namespace ComicViewer.Services
             Loader = new(this);
             Exporter = new(this);
             Cache = new(this);
+            CoverCache = new(64);
             Load.Run();
         }
 
