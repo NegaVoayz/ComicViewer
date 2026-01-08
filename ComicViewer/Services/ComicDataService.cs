@@ -56,15 +56,15 @@ namespace ComicViewer.Services
         public async Task<string?> GetTagNameFromAliasAsync(string tagName)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
-            var aliasEntry = context.TagAliases.FirstOrDefault(e => e.Alias == tagName);
+            var aliasEntry = context.TagAliases.FirstOrDefault(e => e.Alias.Equals(tagName, StringComparison.OrdinalIgnoreCase));
             string standardName;
             if (aliasEntry == null)
                 standardName =  tagName;
             else
                 standardName = aliasEntry.Name;
-            string standardKey = ComicUtils.CalculateMD5(standardName);
-            if (context.Tags.Any(e => e.Key == standardKey))
-                return standardName;
+            var tag = context.Tags.FirstOrDefault(e => e.Name.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+            if(tag != null)
+                return tag.Name;
             return null;
         }
         public async Task<bool> AddTagAliasAsync(string tagAlias, string tagName)
@@ -82,6 +82,47 @@ namespace ComicViewer.Services
             });
             await context.SaveChangesAsync();
             return true;
+        }
+        public async Task<bool> ChangeTagAliasesAsync(IEnumerable<TagAlias> tagAliases)
+        {
+            bool tagChanged = false;
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var newAliases = tagAliases.ToHashSet();
+            var oldAliases = await context.TagAliases
+                .AsNoTracking()  // 提高性能，不需要追踪变更
+                .ToHashSetAsync();
+
+            var removedAliases = oldAliases.Except(newAliases).ToHashSet();  // 在旧不在新
+            var addedAliases = newAliases.Except(oldAliases).ToHashSet();    // 在新不在旧
+
+            if (addedAliases.Any())
+            {
+                var deprecatedTagNames = addedAliases.Select(e => e.Alias).ToHashSet();
+                var affectedTagNames = await context.Tags
+                    .Where(e => deprecatedTagNames.Contains(e.Name))
+                    .Select(e => e.Name)
+                    .ToHashSetAsync();
+                if (affectedTagNames.Any())
+                {
+                    tagChanged = true;
+                    foreach (var entry in addedAliases.Where(e => affectedTagNames.Contains(e.Alias)))
+                    {
+                        await ReplaceTagAsync(entry.Alias, entry.Name);
+                    }
+                }
+                await context.TagAliases.AddRangeAsync(addedAliases);
+            }
+
+            if (removedAliases.Any())
+            {
+                await context.TagAliases.Where(e => removedAliases.Contains(e))
+                    .ExecuteDeleteAsync();
+            }
+
+            await context.SaveChangesAsync();
+
+            return tagChanged;
         }
         public async Task ReplaceTagAsync(string deprecatedTagName, string standardTagName)
         {

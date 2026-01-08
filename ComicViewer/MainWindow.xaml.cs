@@ -744,6 +744,48 @@ namespace ComicViewer
             }
         }
 
+        private void EditTagMappingButton_Click(object sender, RoutedEventArgs e)
+        {
+            // 弹出映射编辑窗口
+            // 允许添加/删除映射
+            try
+            {
+                ShowStatusMessage($"正在打开映射编辑器", 1000);
+
+                // 创建并显示编辑器窗口（非模态）
+                var dialog = new EditTagMappingDialog(service)
+                {
+                    Owner = this,
+                    WindowStartupLocation = WindowStartupLocation.Manual
+                };
+
+                // 订阅窗口关闭事件
+                dialog.Closed += async (s, e) =>
+                {
+                    if (dialog.Changed == true)
+                    {
+                        // 显示反馈
+                        ShowStatusMessage($"已更新标签", 2000);
+
+                        // 刷新显示
+                        await service.Cache.RefreshTagsAsync();
+                        await service.Cache.RefreshComicsAsync();
+                    }
+                };
+
+                // 关闭设置菜单
+                SettingsToggleButton.IsChecked = false;
+                // 显示窗口（非模态）
+                dialog.Show();
+            }
+            catch (Exception)
+            {
+                MessageBox.Show($"映射编辑器打开失败", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+                ShowStatusMessage($"映射编辑器打开失败", 2000);
+            }
+        }
+
         private bool ValidateNewDirectory(string path)
         {
             try
@@ -781,7 +823,7 @@ namespace ComicViewer
         {
             if (StatusText != null)
             {
-                StatusText.Text = message;
+                Dispatcher.Invoke(() => { StatusText.Text = message; });
 
                 // 定时恢复原状态
                 var timer = new System.Windows.Threading.DispatcherTimer
@@ -791,7 +833,7 @@ namespace ComicViewer
                 timer.Tick += (s, e) =>
                 {
                     timer.Stop();
-                    StatusText.Text = "就绪";
+                    Dispatcher.Invoke(() => { StatusText.Text = "就绪"; });
                 };
                 timer.Start();
             }

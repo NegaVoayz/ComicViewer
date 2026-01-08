@@ -16,5 +16,16 @@ namespace ComicViewer.Models
         [Column("Name", TypeName = "TEXT")]
         [Required]
         public required string Name { get; set; }
+        public override bool Equals(object? obj)
+        {
+            return obj is TagAlias data &&
+                   Alias == data.Alias &&
+                   Name == data.Name;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Alias, Name);
+        }
     }
 }

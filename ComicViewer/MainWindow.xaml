@@ -95,7 +95,8 @@
                            StaysOpen="False"
                            AllowsTransparency="True"
                            PopupAnimation="Fade"
-                           Width="280">
+                           Width="280"
+                           Margin="0,20">
                         <Border Background="White"
                                 BorderBrush="#E0E0E0"
                                 BorderThickness="1"
@@ -280,16 +281,12 @@
                                     </Grid>
                                 </Border>
 
-                                <!-- 分隔线 -->
-                                <Border Grid.Row="3" 
-                                        Height="1" 
-                                        Background="#F0F0F0"/>
-
                                 <!-- 底部操作 -->
-                                <StackPanel Grid.Row="4"
-                                            Orientation="Horizontal"
-                                            HorizontalAlignment="Right"
-                                            Margin="16,12">
+                                <Border Grid.Row="3"
+                                        Padding="16,6"
+                                        BorderBrush="#F0F0F0"
+                                        BorderThickness="0,0,0,0"
+                                        HorizontalAlignment="Right">
                                     <Button x:Name="OpenDirectoryButton"
                                             Content="📁 打开目录"
                                             Height="28"
@@ -297,7 +294,45 @@
                                             Style="{StaticResource TextButtonStyle}"
                                             Click="OpenSaveDirectory_Click"
                                             ToolTip="在文件资源管理器中打开"/>
-                                </StackPanel>
+                                </Border>
+
+                                <Border Grid.Row="4"
+                                        Padding="16,12"
+                                        BorderBrush="#F0F0F0"
+                                        BorderThickness="0,1,0,0">
+                                    <Button x:Name="EditTagMappingButton"
+                                            Content="编辑标签映射"
+                                            Height="32"
+                                            Click="EditTagMappingButton_Click">
+                                        <Button.Style>
+                                            <Style BasedOn="{StaticResource AccentButtonStyle}" TargetType="Button">
+                                                <Setter Property="Background" Value="#4285F4"/>
+                                                <Setter Property="Foreground" Value="White"/>
+                                                <Setter Property="Template">
+                                                    <Setter.Value>
+                                                        <ControlTemplate TargetType="Button">
+                                                            <Border x:Name="border"
+                                                                        Background="{TemplateBinding Background}"
+                                                                        CornerRadius="4"
+                                                                        Padding="12,0">
+                                                                <ContentPresenter HorizontalAlignment="Center"
+                                                                                        VerticalAlignment="Center"/>
+                                                            </Border>
+                                                            <ControlTemplate.Triggers>
+                                                                <Trigger Property="IsMouseOver" Value="True">
+                                                                    <Setter TargetName="border" Property="Background" Value="#3367D6"/>
+                                                                </Trigger>
+                                                                <Trigger Property="IsPressed" Value="True">
+                                                                    <Setter TargetName="border" Property="Background" Value="#2A56C6"/>
+                                                                </Trigger>
+                                                            </ControlTemplate.Triggers>
+                                                        </ControlTemplate>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                </Border>
                             </Grid>
                         </Border>
                     </Popup>

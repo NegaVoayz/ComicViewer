@@ -1,0 +1,143 @@
+﻿using ComicViewer.Infrastructure;
+using ComicViewer.Models;
+using ComicViewer.Services;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using System.Windows;
+using System.Windows.Controls;
+using System.Windows.Input;
+using System.Linq;
+using System.Threading.Tasks;
+using System.Collections.Generic;
+
+namespace ComicViewer
+{
+    /// <summary>
+    /// EditTagMappingDialog.xaml 的交互逻辑
+    /// </summary>
+    public partial class EditTagMappingDialog : Window
+    {
+        private readonly ComicService service;
+        private readonly TagAliasViewModel _viewModel;
+        private readonly TagAliasCache _cache;
+
+        public bool Changed { get; private set; } = false;
+
+        public EditTagMappingDialog(ComicService service)
+        {
+            InitializeComponent();
+
+            this.service = service;
+            _cache = new TagAliasCache(service);
+            _viewModel = _cache.ViewModel;
+            DataContext = _viewModel;
+
+            // 初始化防抖器
+            SearchNameDebouncer = new Debouncer<string>(300, _cache.SetSearchTagName);
+            SearchAliasDebouncer = new Debouncer<string>(300, _cache.SetSearchAlias);
+
+            // 加载数据
+            Loaded += async (s, e) => await _cache.InitializeAsync();
+        }
+
+        private void AddMappingButton_Click(object sender, RoutedEventArgs e)
+        {
+            AddMapping();
+        }
+
+        Debouncer<string> SearchNameDebouncer;
+        private void OnNewNameChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is TextBox NameBox)
+            {
+                SearchNameDebouncer.Debounce(NameBox.Text);
+            }
+        }
+
+        Debouncer<string> SearchAliasDebouncer;
+        private void OnNewAliasChanged(object sender, TextChangedEventArgs e)
+        {
+            if (sender is TextBox AliasBox)
+            {
+                SearchAliasDebouncer.Debounce(AliasBox.Text);
+            }
+        }
+
+        private void AddMapping()
+        {
+            var alias = NewAliasTextBox.Text.Trim();
+            var tagName = NewTagNameTextBox.Text.Trim();
+
+            if (string.IsNullOrWhiteSpace(alias) || string.IsNullOrWhiteSpace(tagName))
+            {
+                MessageBox.Show("别名和标签名都不能为空", "提示",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            // 检查别名是否已存在
+            if (_cache.ContainsAlias(alias))
+            {
+                MessageBox.Show($"别名 '{alias}' 已存在", "提示",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                NewAliasTextBox.Focus();
+                NewAliasTextBox.SelectAll();
+                return;
+            }
+
+            var mapping = new TagAlias
+            {
+                Alias = alias,
+                Name = _cache.GetNameByAlias(tagName)
+            };
+
+            _cache.AddTagAlias(mapping);
+
+            // 清空输入框
+            NewAliasTextBox.Text = string.Empty;
+            NewTagNameTextBox.Text = string.Empty;
+
+            // 焦点回到第一个输入框
+            NewAliasTextBox.Focus();
+        }
+
+        private void RemoveMappingButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button button && button.Tag is TagAlias mapping)
+            {
+                _cache.RemoveTagAlias(mapping);
+            }
+        }
+
+        private void NewMappingTextBox_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.Key == Key.Enter)
+            {
+                AddMapping();
+                e.Handled = true;
+            }
+        }
+
+        private async void SaveButton_Click(object sender, RoutedEventArgs e)
+        {
+            try
+            {
+                // 保存所有映射到数据库
+                Changed = await service.DataService.ChangeTagAliasesAsync(_cache.AllEntries);
+                Close();
+            }
+            catch (System.Exception ex)
+            {
+                MessageBox.Show($"保存失败: {ex.Message}", "错误",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        {
+            Changed = false;
+            Close();
+        }
+    }
+}
