@@ -46,9 +46,21 @@ namespace ComicViewer.Services
 
             // 创建 ViewModel
             ViewModel = new(_selectedTagMappings);
+
+            service.Load.Add(new DAGTask
+            {
+                name = "AliasCache",
+                task = InitializeAsync,
+                requirements = { "DataService" }
+            });
         }
 
         public async Task InitializeAsync()
+        {
+            await RefreshAsync();
+        }
+
+        public async Task RefreshAsync()
         {
             var mappings = await service.DataService.GetAllTagAliasesAsync();
 
@@ -59,7 +71,6 @@ namespace ComicViewer.Services
                 list.AddRange(mappings);
             });
         }
-
         public bool ContainsAlias(string alias)
         {
             return _mappingsSource.Items.Any(t => t.Alias.Equals(alias, StringComparison.OrdinalIgnoreCase));
@@ -112,6 +123,16 @@ namespace ComicViewer.Services
         public void RemoveTagAlias(TagAlias entry)
         {
             _mappingsSource.Remove(entry);
+        }
+
+        public void AddTagAliases(IEnumerable<TagAlias> entries)
+        {
+            _mappingsSource.AddRange(entries);
+        }
+
+        public void RemoveTagAliases(IEnumerable<TagAlias> entries)
+        {
+            _mappingsSource.RemoveMany(entries);
         }
 
         #endregion

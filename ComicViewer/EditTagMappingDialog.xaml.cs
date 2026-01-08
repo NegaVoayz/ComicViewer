@@ -22,6 +22,9 @@ namespace ComicViewer
         private readonly TagAliasViewModel _viewModel;
         private readonly TagAliasCache _cache;
 
+        private readonly HashSet<TagAlias> _addedMappings = new();
+        private readonly HashSet<TagAlias> _removedMappings = new();
+
         public bool Changed { get; private set; } = false;
 
         public EditTagMappingDialog(ComicService service)
@@ -29,16 +32,13 @@ namespace ComicViewer
             InitializeComponent();
 
             this.service = service;
-            _cache = new TagAliasCache(service);
+            _cache = service.TagAliasCache;
             _viewModel = _cache.ViewModel;
             DataContext = _viewModel;
 
             // 初始化防抖器
             SearchNameDebouncer = new Debouncer<string>(300, _cache.SetSearchTagName);
             SearchAliasDebouncer = new Debouncer<string>(300, _cache.SetSearchAlias);
-
-            // 加载数据
-            Loaded += async (s, e) => await _cache.InitializeAsync();
         }
 
         private void AddMappingButton_Click(object sender, RoutedEventArgs e)
@@ -94,8 +94,20 @@ namespace ComicViewer
 
             _cache.AddTagAlias(mapping);
 
-            // 清空输入框
-            NewAliasTextBox.Text = string.Empty;
+            // 记录变更
+            if (_removedMappings.Contains(mapping))
+            {
+                // 如果之前被标记为删除，则取消删除标记
+                _removedMappings.Remove(mapping);
+            }
+            else
+            {
+                // 新增的映射
+                _addedMappings.Add(mapping);
+            }
+
+                // 清空输入框
+                NewAliasTextBox.Text = string.Empty;
             NewTagNameTextBox.Text = string.Empty;
 
             // 焦点回到第一个输入框
@@ -107,6 +119,16 @@ namespace ComicViewer
             if (sender is Button button && button.Tag is TagAlias mapping)
             {
                 _cache.RemoveTagAlias(mapping);
+                if (_addedMappings.Contains(mapping))
+                {
+                    // 如果是新添加的映射，则直接移除新增记录
+                    _addedMappings.Remove(mapping);
+                }
+                else
+                {
+                    // 标记为已删除
+                    _removedMappings.Add(mapping);
+                }
             }
         }
 
@@ -124,7 +146,12 @@ namespace ComicViewer
             try
             {
                 // 保存所有映射到数据库
-                Changed = await service.DataService.ChangeTagAliasesAsync(_cache.AllEntries);
+                Changed = await service.DataService.ChangeTagAliasesAsync(_addedMappings, _removedMappings);
+                if(Changed)
+                {
+                    // if the alias changes affected other aliases, refresh all
+                    await service.TagAliasCache.RefreshAsync();
+                }
                 Close();
             }
             catch (System.Exception ex)
@@ -134,8 +161,11 @@ namespace ComicViewer
             }
         }
 
-        private void CancelButton_Click(object sender, RoutedEventArgs e)
+        private async void CancelButton_Click(object sender, RoutedEventArgs e)
         {
+            // rollback changes
+            service.TagAliasCache.RemoveTagAliases(_addedMappings);
+            service.TagAliasCache.AddTagAliases(_removedMappings);
             Changed = false;
             Close();
         }

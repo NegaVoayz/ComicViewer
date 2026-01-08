@@ -217,6 +217,7 @@ namespace ComicViewer
             if (_newAliasEntries.Any())
             {
                 await service.DataService.AddTagAliasesAsync(_newAliasEntries);
+                await service.TagAliasCache.RefreshAsync();
             }
             Changed = true;
             Close();

@@ -90,7 +90,7 @@ namespace ComicViewer.Services
 
             service.Load.Add(new DAGTask
             {
-                name = "Cache",
+                name = "ComicCache",
                 task = InitializeAsync,
                 requirements = { "DataService", "FileLoader" }
             });
