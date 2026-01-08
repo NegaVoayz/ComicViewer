@@ -153,7 +153,8 @@
 
                 <!-- 映射列表 -->
                 <ScrollViewer Grid.Row="1"
-                              VerticalScrollBarVisibility="Auto">
+                              VerticalScrollBarVisibility="Auto"
+                              VirtualizingPanel.IsVirtualizing="True">
                     <ItemsControl x:Name="MappingListControl"
                                   ItemsSource="{Binding SelectedTagAliases}">
                         <ItemsControl.ItemTemplate>
