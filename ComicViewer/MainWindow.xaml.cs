@@ -406,6 +406,8 @@ namespace ComicViewer
                 await service.Cache.RemoveComic(comic.Key);
                 // 刷新标签
                 await service.Cache.RefreshTagsAsync();
+                // 删除封面缓存
+                service.CoverCache.Remove(comic.Key);
             }
         }
 
