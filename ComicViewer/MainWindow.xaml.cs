@@ -373,7 +373,7 @@ namespace ComicViewer
             // 从库中移除（不删除文件）
             // 只是从内存索引中删除，文件还在磁盘上
             var result = MessageBox.Show(
-                $"从库中移除 '{comic.Title}'？\n（文件不会被删除）",
+                $"从视图中暂时移除 '{comic.Title}'？\n（文件不会被删除）",
                 "确认移除",
                 MessageBoxButton.YesNo);
 
