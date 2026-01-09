@@ -62,7 +62,7 @@ namespace ComicViewer.Converters
         {
             if (value is string name)
             {
-                var ans = name.StartsWith(ComicUtils.AuthorPrefix) ? name.Substring(ComicUtils.AuthorPrefix.Length) : name;
+                var ans = name.StartsWith(ComicUtils.AuthorPrefix) ? string.Concat("👤", name.AsSpan(ComicUtils.AuthorPrefix.Length)) : name;
                 return ans.Trim();
             }
             return null;
