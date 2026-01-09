@@ -4,6 +4,7 @@ using ComicViewer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using System.IO;
+using System.Security.Cryptography;
 
 namespace ComicViewer.Services
 {
@@ -58,12 +59,12 @@ namespace ComicViewer.Services
             string standardName;
             {
                 await using var context = await _contextFactory.CreateDbContextAsync();
-                var aliasEntry = context.TagAliases.FirstOrDefault(e => e.Alias.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+                var aliasEntry = context.TagAliases.FirstOrDefault(e => e.Alias == tagName);
                 if (aliasEntry == null)
                     standardName = tagName;
                 else
                     standardName = aliasEntry.Name;
-                var tag = context.Tags.FirstOrDefault(e => e.Name.Equals(standardName, StringComparison.OrdinalIgnoreCase));
+                var tag = context.Tags.FirstOrDefault(e => e.Name == standardName);
                 if (tag != null)
                     return tag.Name;
                 if (aliasEntry == null)
@@ -82,7 +83,7 @@ namespace ComicViewer.Services
         public async Task<string> ResolveTagNameAsync(string tagName)
         {
             await using var context = await _contextFactory.CreateDbContextAsync();
-            var aliasEntry = context.TagAliases.FirstOrDefault(e => e.Alias.Equals(tagName, StringComparison.OrdinalIgnoreCase));
+            var aliasEntry = context.TagAliases.FirstOrDefault(e => e.Alias == tagName);
             if (aliasEntry == null)
                 return tagName;
             else
@@ -113,11 +114,27 @@ namespace ComicViewer.Services
                     .Where(e => deprecatedTagNames.Contains(e.Name))
                     .Select(e => e.Name)
                     .ToHashSetAsync();
+
             }
             if (affectedTagNames.Any())
             {
                 tagChanged = true;
-                foreach (var entry in tagAliasesSet.Where(e => affectedTagNames.Contains(e.Alias)))
+                var affectedTagAliases = tagAliasesSet.Where(e => affectedTagNames.Contains(e.Alias));
+
+                // find new tags to be created
+                HashSet<string> newTagNames = affectedTagAliases.Select(e => e.Name).ToHashSet();
+                using (var context = await _contextFactory.CreateDbContextAsync())
+                {
+                    var existingNames = await context.Tags
+                        .Where(t => newTagNames.Contains(t.Name))
+                        .Select(t => t.Name)
+                        .ToListAsync();
+                    newTagNames.ExceptWith(existingNames);
+                }
+                // add them
+                await AddTagsAsync(newTagNames);
+
+                foreach (var entry in affectedTagAliases)
                 {
                     await ReplaceTagAsync(entry.Alias, entry.Name);
                 }
@@ -181,9 +198,6 @@ namespace ComicViewer.Services
 
             try
             {
-                if (!context.Tags.Any(e => e.Key == standardTagKey))
-                    throw new InvalidOperationException();
-
                 // 1. 查询需要迁移的记录
                 var comicsToMigrate = context.ComicTags
                     .Where(e => e.TagKey == deprecatedTagKey)
