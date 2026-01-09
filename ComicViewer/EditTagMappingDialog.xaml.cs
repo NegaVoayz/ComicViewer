@@ -37,6 +37,7 @@ namespace ComicViewer
             DataContext = _viewModel;
 
             // 初始化防抖器
+            AddEnableDebouncer = new Debouncer(200, UpdateAddMappingEnable);
             SearchNameDebouncer = new Debouncer<string>(300, _cache.SetSearchTagName);
             SearchAliasDebouncer = new Debouncer<string>(300, _cache.SetSearchAlias);
         }
@@ -46,12 +47,25 @@ namespace ComicViewer
             AddMapping();
         }
 
+        private void UpdateAddMappingEnable()
+        {
+            var alias = NewAliasTextBox.Text.Trim();
+            var tagName = NewTagNameTextBox.Text.Trim();
+            AddMappingButton.IsEnabled =
+                !(  string.IsNullOrWhiteSpace(alias) 
+                 || string.IsNullOrWhiteSpace(tagName)
+                 || _cache.AllEntries.Any(e => e.Alias == alias));
+        }
+
+        Debouncer AddEnableDebouncer;
+
         Debouncer<string> SearchNameDebouncer;
         private void OnNewNameChanged(object sender, TextChangedEventArgs e)
         {
             if (sender is TextBox NameBox)
             {
                 SearchNameDebouncer.Debounce(NameBox.Text);
+                AddEnableDebouncer.Debounce();
             }
         }
 
@@ -61,6 +75,7 @@ namespace ComicViewer
             if (sender is TextBox AliasBox)
             {
                 SearchAliasDebouncer.Debounce(AliasBox.Text);
+                AddEnableDebouncer.Debounce();
             }
         }
 
