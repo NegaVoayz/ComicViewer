@@ -173,7 +173,7 @@ namespace ComicViewer.Services
             if (_selectedTagsSet.Items.Any())
             {
                 var comicTagKeys = new HashSet<string>(
-                    comic.ComicTags?.Select(ct => ct.Tag.Key) ?? Enumerable.Empty<string>()
+                    comic.ComicTags?.Select(ct => ct.Tag.Key) ?? (await service.DataService.GetTagsOfComic(comic.Key)).Select(e => e.Key)
                 );
 
                 var selectedKeys = new HashSet<string>(

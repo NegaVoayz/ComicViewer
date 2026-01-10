@@ -177,7 +177,7 @@ namespace ComicViewer.Services
             {
                 // 其他异常也清理
                 await CleanupFileAsync(model.DestinationPath);
-                await service.DataService.DoneMovingTaskAsync(model);
+                //await service.DataService.DoneMovingTaskAsync(model);
                 await service.DataService.RemoveComicAsync(model.Key);
                 throw;
             }

@@ -496,6 +496,10 @@
                                         <MenuItem Header="📤 分享漫画"
                                                   Click="ShareComicMenuItem_Click"/>
 
+                                        <MenuItem Header="✏️ 编辑名称"
+                                                  Click="EditTitleMenuItem_Click"
+                                                  Background="Yellow"/>
+
                                         <MenuItem Header="🗑️ 从库中移除"
                                                   Click="RemoveComicMenuItem_Click"
                                                   Foreground="Red"/>

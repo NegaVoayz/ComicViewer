@@ -533,5 +533,71 @@ namespace ComicViewer.Services
                 ))
                 .ToListAsync();
         }
+
+        public async Task<ComicData?> RenameComic(string comicKey, string newName)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var newKey = ComicUtils.CalculateMD5(newName);
+
+            if (comicKey == newKey)
+            {
+                return null;
+            }
+            // nothing is changed
+            if (context.Comics.Any(e => e.Key == newKey))
+            {
+                return null;
+            }
+
+            using var transaction = await context.Database.BeginTransactionAsync();
+            try
+            {
+                var comic = context.Comics.FirstOrDefault(e => e.Key == comicKey);
+                if (comic == null)
+                {
+                    throw new InvalidDataException("Comic not found");
+                }
+
+                var newComic = new ComicData
+                {
+                    Key = newKey,
+                    Title = newName,
+                    Source = comic.Source,
+                    CreatedTime = comic.CreatedTime,
+                    LastAccess = comic.LastAccess,
+                    Progress = comic.Progress,
+                    Rating = comic.Rating
+                };
+
+                context.Comics.Add(newComic);
+                await context.SaveChangesAsync();
+
+                await context.ComicTags.Where(e => e.ComicKey == comic.Key)
+                    .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.ComicKey, newKey));
+
+                if (await service.FileLoader.StopMovingTask(comicKey))
+                    await service.FileLoader.AddMovingTask(newKey,
+                        service.FileService.GetComicPath(comicKey));
+                else
+                    File.Move(
+                        ComicUtils.ComicNormalPath(comicKey),
+                        ComicUtils.ComicNormalPath(newKey));
+
+                await service.FileService.RemoveComicAsync(comicKey);
+                context.Comics.Remove(comic);
+                await context.SaveChangesAsync();
+
+                await transaction.CommitAsync();
+
+                context.Entry(newComic).State = EntityState.Detached;
+                return newComic;
+            }
+            catch (Exception)
+            {
+                await transaction.RollbackAsync();
+                throw;
+            }
+}
     }
 }

@@ -286,6 +286,58 @@ namespace ComicViewer
             return;
         }
 
+        private void EditTitleMenuItem(ComicModel comic)
+        {
+            // 弹出标签编辑窗口
+            // 允许添加/删除标签
+            ShowStatusMessage($"正在编辑: {comic.Title}", 1000);
+
+            // 创建并显示编辑器窗口（非模态）
+            var dialog = new TextEditPopup(comic.Title, "编辑标题")
+            {
+                Owner = this,
+                WindowStartupLocation = WindowStartupLocation.Manual
+            };
+
+            // 订阅窗口关闭事件
+            dialog.Closed += async (s, e) =>
+            {
+                if (!dialog.IsConfirmed)
+                {
+                    return;
+                }
+                var newTitle = dialog.ResultText.Trim();
+                if (newTitle.IsWhiteSpace())
+                {
+                    ShowStatusMessage($"更新 {comic.Title} 的标题失败：新名称不可为空", 2000);
+                    return;
+                }
+                if (newTitle == comic.Title)
+                {
+                    ShowStatusMessage($"更新 {comic.Title} 的标题失败：不可与原名相同", 2000);
+                    return;
+                }
+                // 自动刷新显示
+                var newData = await service.DataService.RenameComic(comic.Key, newTitle);
+
+                if(newData == null)
+                {
+                    ShowStatusMessage($"更新 {comic.Title} 的标题失败：存在重名漫画 {newTitle}", 2000);
+                    return;
+                }
+
+                await service.Cache.RemoveComic(comic.Key);
+                await service.Cache.AddComic(newData);
+
+                // 显示反馈
+                ShowStatusMessage($"已更新 {comic.Title} 的标题为 {newTitle}", 2000);
+            };
+
+            // 显示窗口（非模态）
+            dialog.Show();
+            return;
+        }
+
         private void CopySourceMenuItem(ComicModel comic)
         {
             try
@@ -564,6 +616,14 @@ namespace ComicViewer
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
                 EditSourceMenuItem(comic);
+            }
+        }
+
+        private void EditTitleMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
+            {
+                EditTitleMenuItem(comic);
             }
         }
 
