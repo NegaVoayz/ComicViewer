@@ -48,7 +48,9 @@ namespace ComicViewer.Services
             if (Path.GetExtension(filePath).Equals(".zip", StringComparison.OrdinalIgnoreCase)
                 && Path.GetPathRoot(filePath) == Path.GetPathRoot(Configs.GetFilePath()))
             {
-                File.Move(filePath, ComicUtils.ComicNormalPath(comic.Key));
+                var dest = ComicUtils.ComicNormalPath(comic.Key);
+                if(!File.Exists(dest))
+                    File.Move(filePath, dest);
                 await service.DataService.AddComicAsync(comic);
             }
             else

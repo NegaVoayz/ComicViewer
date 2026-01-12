@@ -3,6 +3,7 @@ using ComicViewer.Infrastructure;
 using ComicViewer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using SharpCompress.Common;
 using System.IO;
 using System.Security.Cryptography;
 
@@ -577,12 +578,18 @@ namespace ComicViewer.Services
                     .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.ComicKey, newKey));
 
                 if (await service.FileLoader.StopMovingTask(comicKey))
-                    await service.FileLoader.AddMovingTask(newKey,
-                        service.FileService.GetComicPath(comicKey));
+                {
+                    var tempPath = service.FileService.GetComicPath(comicKey);
+                    service.FileService.AddComicTempPath(newKey, tempPath);
+                    await service.FileLoader.AddMovingTask(newKey, tempPath);
+                }
                 else
-                    File.Move(
-                        ComicUtils.ComicNormalPath(comicKey),
-                        ComicUtils.ComicNormalPath(newKey));
+                {
+                    var dest = ComicUtils.ComicNormalPath(newKey);
+                    if (File.Exists(dest))
+                        File.Delete(dest);
+                    File.Move(ComicUtils.ComicNormalPath(comicKey), dest);
+                }
 
                 await service.FileService.RemoveComicAsync(comicKey);
                 context.Comics.Remove(comic);

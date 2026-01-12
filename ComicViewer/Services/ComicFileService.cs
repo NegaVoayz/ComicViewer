@@ -208,9 +208,6 @@ namespace ComicViewer.Services
             }
             catch (FileNotFoundException)
             {
-                string key = Path.GetFileNameWithoutExtension(archivePath);
-                service.DataService.RemoveComicAsync(key).Wait();
-                service.Cache.RemoveComic(key).Wait();
                 return 0;
             }
         }

@@ -123,7 +123,8 @@ namespace ComicViewer.Services
                         await service.DataService.AddMovingTask(model);
                     }
                     //Thread.Sleep(120 * 1000);
-                    await MoveComicAsync(model, cts.Token);
+                    if(!File.Exists(model.DestinationPath))
+                        await MoveComicAsync(model, cts.Token);
                     // 任务成功完成
                 }
                 catch (OperationCanceledException)
