@@ -420,20 +420,39 @@ namespace ComicViewer
             }
         }
 
-        private async Task RemoveComic(ComicModel comic)
+        private async Task OpenComicArchive(ComicModel comic)
         {
-            // 从库中移除（不删除文件）
-            // 只是从内存索引中删除，文件还在磁盘上
-            var result = MessageBox.Show(
-                $"从视图中暂时移除 '{comic.Title}'？\n（文件不会被删除）",
-                "确认移除",
-                MessageBoxButton.YesNo);
-
-            if (result == MessageBoxResult.Yes)
+            var filePath = service.FileService.GetComicPath(comic.Key);
+            try
             {
-                await service.Cache.RemoveComic(comic.Key);
-                // 发布删除事件
-                ComicEvents.PublishComicDeleted(comic.Key);
+                if (File.Exists(filePath))
+                {
+                    // 使用 explorer /select 命令选中文件
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"/select,\"{filePath}\"",
+                        UseShellExecute = false
+                    });
+                }
+                else if (Directory.Exists(filePath))
+                {
+                    // 如果是文件夹，直接打开
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "explorer.exe",
+                        Arguments = $"\"{filePath}\"",
+                        UseShellExecute = false
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"无法打开文件位置: {ex.Message}");
+            }
+            finally
+            {
+                service.FileService.ReleaseComicPath(comic.Key, filePath);
             }
         }
 
@@ -650,11 +669,11 @@ namespace ComicViewer
                 await ShareComic(comic);
             }
         }
-        private async void RemoveComicMenuItem_Click(object sender, RoutedEventArgs e)
+        private async void OpenComicArchiveMenuItem_Click(object sender, RoutedEventArgs e)
         {
             if (sender is MenuItem menuItem && menuItem.DataContext is ComicModel comic)
             {
-                await RemoveComic(comic);
+                await OpenComicArchive(comic);
             }
         }
         private async void DeleteComicMenuItem_Click(object sender, RoutedEventArgs e)

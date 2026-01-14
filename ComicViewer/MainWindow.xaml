@@ -500,9 +500,8 @@
                                                   Click="EditTitleMenuItem_Click"
                                                   Background="Yellow"/>
 
-                                        <MenuItem Header="🗑️ 从库中移除"
-                                                  Click="RemoveComicMenuItem_Click"
-                                                  Foreground="Red"/>
+                                    <MenuItem Header="📖 在库中打开"
+                                                  Click="OpenComicArchiveMenuItem_Click"/>
 
                                         <MenuItem Header="⚠️ 删除文件"
                                                   Click="DeleteComicMenuItem_Click"
