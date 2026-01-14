@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 
@@ -87,8 +88,7 @@ namespace ComicViewer.Models
         private int _progress;
         private int _length = 0;
         private ObservableTask<int>? _lengthTask;
-        private BitmapImage? _coverImage;
-        private ObservableTask<BitmapImage>? _coverTask;
+        private ObservableTask? _coverTask;
         public int Rating;
         public DateTime CreatedTime;
         public DateTime LastAccess;
@@ -172,9 +172,16 @@ namespace ComicViewer.Models
             get
             {
                 // 当访问CoverImage时，在视口内会自动加载
-                return _coverImage ?? _PlaceholderImage;
+                if (service.CoverCache.TryGet(Key, out var cachedCover))
+                {
+                    return cachedCover;
+                }
+                if (_coverTask == null)
+                {
+                    Load();
+                }
+                return _PlaceholderImage;
             }
-            private set => SetField(ref _coverImage, value);
         }
 
         public void RefreshTags()
@@ -185,7 +192,7 @@ namespace ComicViewer.Models
         public void RefreshCover()
         {
             // 开始加载，但不等待
-            _coverTask = new ObservableTask<BitmapImage>(LoadCoverAsync());
+            _coverTask = new ObservableTask(LoadCoverAsync());
             _coverTask.PropertyChanged += OnCoverTaskPropertyChanged;
         }
 
@@ -210,14 +217,8 @@ namespace ComicViewer.Models
         }
         private void OnCoverTaskPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName == nameof(ObservableTask<BitmapImage>.Result))
-            {
-                if (_coverTask?.Result != null)
-                {
-                    CoverImage = _coverTask.Result;
-                    OnPropertyChanged();
-                }
-            }
+            OnPropertyChanged("CoverImage");
+            _coverTask = null;
         }
         private void OnLengthTaskPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -246,13 +247,13 @@ namespace ComicViewer.Models
             return true;
         }
 
-        private async Task<BitmapImage> LoadCoverAsync()
+        private async Task LoadCoverAsync()
         {
-            return await Task.Run(async () =>
+            await Task.Run(async () =>
             {
-                if(service.CoverCache.TryGet(Key, out var cachedCover))
+                if(service.CoverCache.TryGet(Key, out _))
                 {
-                    return cachedCover;
+                    return;
                 }
 
                 var images = await service.FileService.LoadImageEntriesAsync(this);
@@ -262,10 +263,7 @@ namespace ComicViewer.Models
                 if (cover != null)
                 {
                     service.CoverCache.Put(Key, cover);
-                    return cover;
                 }
-                return _PlaceholderImage;
-
             });
         }
 
@@ -320,15 +318,15 @@ namespace ComicViewer.Models
 
         public void Load()
         {
-            if (_coverImage == null && _coverTask == null)
+            if (_coverTask == null)
             {
                 RefreshCover();
+                Debug.WriteLine($"Loading cover for comic {Title}");
             }
         }
 
         public void Unload()
         {
-            _coverImage = null;
             _coverTask = null;
         }
     }

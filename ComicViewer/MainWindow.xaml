@@ -418,139 +418,132 @@
                 <!-- 紧凑标签栏 -->
             </Grid.ColumnDefinitions>
 
-            <ScrollViewer Grid.Column="0" 
-                          x:Name="ComicScrollViewer"
-                          VerticalScrollBarVisibility="Visible"
-                          PreviewMouseWheel="OnPreviewMouseWheel"
-                          CanContentScroll="True">
+            <!-- 使用ItemsControl并绑定到Comics集合 -->
+            <ListView Grid.Column="0" 
+                      x:Name="ComicItemsControl"
+                      ItemsSource="{Binding Comics}"
+                      HorizontalAlignment="Stretch"
+                      Margin="10,0"
+                      VirtualizingPanel.IsVirtualizing="True"
+                      VirtualizingPanel.VirtualizationMode="Recycling"
+                      VirtualizingPanel.CacheLength="8"
+                      VirtualizingPanel.CacheLengthUnit="Item">
+                <ListView.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <!-- WrapPanel实现网格布局 -->
+                        <vwp:VirtualizingWrapPanel 
+                                Orientation="Horizontal" 
+                                SpacingMode="Uniform" 
+                                StretchItems="False"/>
+                    </ItemsPanelTemplate>
+                </ListView.ItemsPanel>
 
-                <!-- 使用ItemsControl并绑定到Comics集合 -->
-                <ItemsControl x:Name="ComicItemsControl"
-                              ItemsSource="{Binding Comics}"
-                              HorizontalAlignment="Left"
-                              Margin="10,0"
-                              ScrollViewer.CanContentScroll="True"
-                              ScrollViewer.IsDeferredScrollingEnabled="True"
-                              VirtualizingPanel.IsVirtualizing="True"
-                              VirtualizingPanel.VirtualizationMode="Recycling"
-                              VirtualizingPanel.ScrollUnit="Item"
-                              VirtualizingPanel.CacheLengthUnit="Page"
-                              VirtualizingPanel.CacheLength="1,2">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <!-- WrapPanel实现网格布局 -->
-                            <vwp:VirtualizingWrapPanel Orientation="Horizontal" SpacingMode="None" StretchItems="False"/>
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    
-                    <ItemsControl.ItemContainerStyle>
-                        <Style TargetType="ContentPresenter">
-                            <Setter Property="Infrastructure:VirtualizationBehavior.AutoUnload" Value="True"/>
-                        </Style>
-                    </ItemsControl.ItemContainerStyle>
+                <ListView.ItemContainerStyle>
+                    <Style TargetType="ListViewItem">
+                        <Setter Property="Infrastructure:VirtualizationBehavior.AutoUnload" Value="True"/>
+                    </Style>
+                </ListView.ItemContainerStyle>
 
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <!-- 漫画卡片模板 -->
-                            <Border Style="{StaticResource CompactComicCard}"
+                <ListView.ItemTemplate>
+                    <DataTemplate>
+                        <!-- 漫画卡片模板 -->
+                        <Border Style="{StaticResource CompactComicCard}"
                                     ToolTip="{Binding Converter={StaticResource ToolTipConverter}}"
                                     MouseLeftButtonUp="ComicCard_Click">
-                                <Border.ContextMenu>
-                                    <ContextMenu>
-                                        <MenuItem Header="📖 打开漫画"
+                            <Border.ContextMenu>
+                                <ContextMenu>
+                                    <MenuItem Header="📖 打开漫画"
                                                   Click="OpenComicMenuItem_Click">
-                                            <MenuItem.Icon>
-                                                <TextBlock Text="▶" FontSize="14"/>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="▶" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
 
-                                        <MenuItem Header="🏷️ 编辑标签"
+                                    <MenuItem Header="🏷️ 编辑标签"
                                                   Click="EditTagsMenuItem_Click">
-                                            <MenuItem.Icon>
-                                                <TextBlock Text="🏷" FontSize="14"/>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="🏷" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
 
-                                        <MenuItem Header="🔗 源相关">
-                                            <MenuItem.Icon>
-                                                <TextBlock Text="🔗" FontSize="14"/>
-                                            </MenuItem.Icon>
+                                    <MenuItem Header="🔗 源相关">
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="🔗" FontSize="14"/>
+                                        </MenuItem.Icon>
 
-                                            <MenuItem Header="编辑源"
+                                        <MenuItem Header="编辑源"
                                                       Click="EditSourceMenuItem_Click"/>
 
-                                            <MenuItem Header="复制源"
+                                        <MenuItem Header="复制源"
                                                       Click="CopySourceMenuItem_Click"/>
-                                        </MenuItem>
+                                    </MenuItem>
 
-                                        <MenuItem Header="✍️ 编辑作者"
+                                    <MenuItem Header="✍️ 编辑作者"
                                                   Click="EditAuthorMenuItem_Click">
-                                            <MenuItem.Icon>
-                                                <TextBlock Text="✍️" FontSize="14"/>
-                                            </MenuItem.Icon>
-                                        </MenuItem>
+                                        <MenuItem.Icon>
+                                            <TextBlock Text="✍️" FontSize="14"/>
+                                        </MenuItem.Icon>
+                                    </MenuItem>
 
 
-                                        <Separator/>
+                                    <Separator/>
 
-                                        <MenuItem Header="📤 分享漫画"
+                                    <MenuItem Header="📤 分享漫画"
                                                   Click="ShareComicMenuItem_Click"/>
 
-                                        <MenuItem Header="✏️ 编辑名称"
+                                    <MenuItem Header="✏️ 编辑名称"
                                                   Click="EditTitleMenuItem_Click"
                                                   Background="Yellow"/>
 
                                     <MenuItem Header="📖 在库中打开"
                                                   Click="OpenComicArchiveMenuItem_Click"/>
 
-                                        <MenuItem Header="⚠️ 删除文件"
+                                    <MenuItem Header="⚠️ 删除文件"
                                                   Click="DeleteComicMenuItem_Click"
                                                   Foreground="DarkRed"/>
-                                    </ContextMenu>
-                                </Border.ContextMenu>
+                                </ContextMenu>
+                            </Border.ContextMenu>
 
-                                <!-- 卡片内容 -->
-                                <Grid>
-                                    <!-- 封面绑定 -->
-
-                                    <Viewbox MaxWidth="280" MaxHeight="350" Stretch="Uniform">
-                                        <Image Stretch="None"
+                            <!-- 卡片内容 -->
+                            <Grid>
+                                <!-- 封面绑定 -->
+                                <Viewbox MaxWidth="280" MaxHeight="350" Stretch="Uniform">
+                                    <Image Stretch="None"
                                                Source="{Binding CoverImage}"/>
-                                    </Viewbox>
+                                </Viewbox>
 
-                                    <!-- 标题和标签区域 -->
-                                    <Border Background="#80000000" 
+                                <!-- 标题和标签区域 -->
+                                <Border Background="#80000000" 
                                 VerticalAlignment="Bottom"
                                 Height="55">
-                                        <StackPanel>
-                                            <TextBlock Text="{Binding Title}" 
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding Title}" 
                                            FontSize="12"
                                            FontWeight="Medium"
                                            Margin="5,5,5,0"
-                                           TextWrapping="Wrap"
+                                           TextWrapping="NoWrap"
                                            MaxHeight="36"
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="White"/>
 
-                                            <TextBlock Text="{Binding Source}" 
+                                        <TextBlock Text="{Binding Source}" 
                                            FontSize="10"
                                            Foreground="#CCCCCC"
                                            Margin="5,0,5,5"
                                            TextTrimming="CharacterEllipsis"/>
 
-                                            <TextBlock Text="{Binding TagsPreview}" 
+                                        <TextBlock Text="{Binding TagsPreview}" 
                                            FontSize="10"
                                            Foreground="#CCCCCC"
                                            Margin="5,0,5,5"
                                            TextTrimming="CharacterEllipsis"/>
-                                        </StackPanel>
-                                    </Border>
-                                </Grid>
-                            </Border>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </ScrollViewer>
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </DataTemplate>
+                </ListView.ItemTemplate>
+            </ListView>
 
             <!-- 标签侧栏 -->
             <Border Grid.Column="1" 
