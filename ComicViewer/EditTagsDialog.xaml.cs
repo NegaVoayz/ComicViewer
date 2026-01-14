@@ -80,8 +80,14 @@ namespace ComicViewer
                 var tokens = name.Split(ComicUtils.TagAliasChars).Select(e => e.Trim());
                 HashSet<string> newAliases = new();
                 string? existingName = null;
+                bool isAuthorTag = false;
                 foreach (var token in tokens)
                 {
+                    if (token.StartsWith(ComicUtils.AuthorPrefix))
+                    {
+                        isAuthorTag = true;
+                        break;
+                    }
                     var resolveTagName = service.DataService.FindTagNameByAliasAsync(token);
                     resolveTagName.Wait();
                     var resolvedTagName = resolveTagName.Result;
@@ -122,6 +128,13 @@ namespace ComicViewer
                     // here means some tags are the same in meaning, and they both exists
                     // and we take the first one as the standard name
                     newAliases.Add(resolvedTagName);
+                }
+
+                if(isAuthorTag)
+                {
+                    MessageBox.Show($"标签 \"{name}\" 包含作者前缀 \"{ComicUtils.AuthorPrefix}\"，无法作为普通标签添加。将会被跳过", "错误",
+                        MessageBoxButton.OK, MessageBoxImage.Error);
+                    continue;
                 }
 
                 // if no existing tags found, create a new one
@@ -213,7 +226,7 @@ namespace ComicViewer
         private async void SaveButton_Click(object sender, RoutedEventArgs e)
         {
             await service.DataService.AddTagsAsync(_newTagNames);
-            await service.DataService.ChangeTagsToComicAsync(_comic.Key, _viewModel.SelectedTags.Select(e => e.Key));
+            await service.DataService.ChangeTagsToComicAsync(_comic.Key, _cache.SelectedTags.Select(e => e.Key));
             if (_newAliasEntries.Any())
             {
                 await service.DataService.AddTagAliasesAsync(_newAliasEntries);

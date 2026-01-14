@@ -36,12 +36,14 @@ namespace ComicViewer.Services
             // 未选中的标签（按名称过滤）
             _tagsSource.Connect()
                 .Filter(_searchTagNameSubject.Select(CreateTagNameFilter))
+                .Filter(AuthorFilter)
                 .Except(_selectedTagsSet.Connect())
                 .Bind(out _unselectedTags)
                 .Subscribe();
 
             // 已选中的标签
             _selectedTagsSet.Connect()
+                .Filter(AuthorFilter)
                 .Bind(out _selectedTags)
                 .Subscribe();
 
@@ -52,31 +54,16 @@ namespace ComicViewer.Services
             ViewModel = new(_unselectedTags, _selectedTags);
         }
 
-        public async Task InitializeAsync()
-        {
-            var tags = await service.DataService.GetAllTagsAsync();
-            var comicTagKeys = (await service.DataService.GetTagsOfComic(comicKey)).Select(e => e.Key).ToHashSet();
-
-            // 使用 Edit() 进行批量操作，避免多次事件触发
-            _tagsSource.Edit(list =>
-            {
-                list.Clear();
-                list.AddRange(tags);
-            });
-
-            var selectedTags = tags.Where(e => comicTagKeys.Contains(e.Key));
-
-            _selectedTagsSet.Edit(list =>
-            {
-                list.Clear();
-                list.AddRange(selectedTags);
-            });
-        }
-
         private Func<TagData, bool> CreateTagNameFilter(string searchTagName)
         {
+
             return tag => string.IsNullOrEmpty(searchTagName) ||
                          tag.Name.Contains(searchTagName, StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool AuthorFilter(TagData tag)
+        {
+            return !tag.Name.StartsWith(ComicUtils.AuthorPrefix);
         }
 
         #region 状态设置方法（替换原来的事件方法）
@@ -95,6 +82,7 @@ namespace ComicViewer.Services
         public void SelectTag(string tagKey)
         {
             TagData tag = _tagsSource.Items.First(t => t.Key == tagKey);
+            if (_selectedTagsSet.Items.Contains(tag)) return;
             tag.Count++;
             _selectedTagsSet.Add(tag);
         }
@@ -104,36 +92,42 @@ namespace ComicViewer.Services
             TagData tag = _tagsSource.Items.First(e => e.Key == tagKey);
             tag.Count--;
             _selectedTagsSet.Remove(_selectedTagsSet.Items.First(t => t.Key == tagKey));
+            if(tag.Count == 0)
+            {
+                _tagsSource.Remove(tag);
+            }
         }
 
         #endregion
 
         #region 批量加载方法
 
-        public async Task LoadInitialDataAsync()
+        public async Task InitializeAsync()
         {
-            // 异步加载初始数据
-            var tags = service.DataService.GetAllTagsAsync();
-            var comicTags = service.DataService.GetTagsOfComic(comicKey);
+            var tags = (await service.DataService.GetAllTagsAsync());
+            var comicTagKeys = (await service.DataService.GetTagsOfComic(comicKey)).Select(e => e.Key).ToHashSet();
 
-            await Task.WhenAll(tags, comicTags);
-
+            // 使用 Edit() 进行批量操作，避免多次事件触发
             _tagsSource.Edit(list =>
             {
                 list.Clear();
-                list.AddRange(tags.Result);
+                list.AddRange(tags);
             });
+
+            var selectedTags = tags.Where(e => comicTagKeys.Contains(e.Key));
 
             _selectedTagsSet.Edit(list =>
             {
                 list.Clear();
-                list.AddRange(comicTags.Result);
+                list.AddRange(selectedTags);
             });
         }
 
         #endregion
 
         #region 辅助属性
+
+        public IEnumerable<TagData> SelectedTags => _selectedTagsSet.Items; 
 
         // 用于 UI 绑定的命令属性
         public ICommand SelectTagCommand { get; }
