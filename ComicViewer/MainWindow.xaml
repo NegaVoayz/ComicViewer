@@ -419,7 +419,7 @@
             </Grid.ColumnDefinitions>
 
             <!-- 使用ItemsControl并绑定到Comics集合 -->
-            <ListView Grid.Column="0" 
+            <vwp:VirtualizingItemsControl Grid.Column="0" 
                       x:Name="ComicItemsControl"
                       ItemsSource="{Binding Comics}"
                       HorizontalAlignment="Stretch"
@@ -428,7 +428,7 @@
                       VirtualizingPanel.VirtualizationMode="Recycling"
                       VirtualizingPanel.CacheLength="8"
                       VirtualizingPanel.CacheLengthUnit="Item">
-                <ListView.ItemsPanel>
+                <vwp:VirtualizingItemsControl.ItemsPanel>
                     <ItemsPanelTemplate>
                         <!-- WrapPanel实现网格布局 -->
                         <vwp:VirtualizingWrapPanel 
@@ -436,20 +436,14 @@
                                 SpacingMode="Uniform" 
                                 StretchItems="False"/>
                     </ItemsPanelTemplate>
-                </ListView.ItemsPanel>
+                </vwp:VirtualizingItemsControl.ItemsPanel>
 
-                <ListView.ItemContainerStyle>
-                    <Style TargetType="ListViewItem">
-                        <Setter Property="Infrastructure:VirtualizationBehavior.AutoUnload" Value="True"/>
-                    </Style>
-                </ListView.ItemContainerStyle>
-
-                <ListView.ItemTemplate>
+                <vwp:VirtualizingItemsControl.ItemTemplate>
                     <DataTemplate>
                         <!-- 漫画卡片模板 -->
                         <Border Style="{StaticResource CompactComicCard}"
-                                    ToolTip="{Binding Converter={StaticResource ToolTipConverter}}"
-                                    MouseLeftButtonUp="ComicCard_Click">
+                                ToolTip="{Binding Converter={StaticResource ToolTipConverter}}"
+                                MouseLeftButtonUp="ComicCard_Click">
                             <Border.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Header="📖 打开漫画"
@@ -542,8 +536,8 @@
                             </Grid>
                         </Border>
                     </DataTemplate>
-                </ListView.ItemTemplate>
-            </ListView>
+                </vwp:VirtualizingItemsControl.ItemTemplate>
+            </vwp:VirtualizingItemsControl>
 
             <!-- 标签侧栏 -->
             <Border Grid.Column="1" 
