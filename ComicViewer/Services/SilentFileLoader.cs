@@ -149,11 +149,15 @@ namespace ComicViewer.Services
             {
                 if (!File.Exists(model.SourcePath))
                 {
-                    throw new FileNotFoundException("源文件不存在", model.SourcePath);
+                    if(!Directory.Exists(model.SourcePath))
+                        throw new FileNotFoundException("源文件不存在", model.SourcePath);
+                    cancellation.ThrowIfCancellationRequested();
+                    await LoadFolderAsync(model);
+                    cancellation.ThrowIfCancellationRequested();
+                    service.FileService.GenerateComicPath(model.Key);
+                    return;
                 }
                 string srcExt = System.IO.Path.GetExtension(model.SourcePath);
-                string dstExt = System.IO.Path.GetExtension(model.DestinationPath);
-
                 cancellation.ThrowIfCancellationRequested();
                 if (srcExt == ".cmc")
                 {
@@ -188,6 +192,34 @@ namespace ComicViewer.Services
                 await service.DataService.DoneMovingTaskAsync(model);
             }
             return;
+        }
+
+        private async Task LoadFolderAsync(MovingFileModel model)
+        {
+            using var output = new FileStream(
+                model.DestinationPath,
+                FileMode.Create,
+                FileAccess.Write,
+                FileShare.None,
+                bufferSize: 1024 * 1024);
+
+            using var zipWriter = WriterFactory.Open(
+                output,
+                ArchiveType.Zip,
+                new WriterOptions(CompressionType.Deflate));
+
+            var allFiles = Directory.GetFiles(model.SourcePath, "*", SearchOption.AllDirectories);
+            foreach (var filePath in allFiles)
+            {
+                string entryKey = Path.GetRelativePath(model.SourcePath, filePath).Replace('\\', '/');
+                using var fileStream = new FileStream(
+                    filePath,
+                    FileMode.Open,
+                    FileAccess.Read,
+                    FileShare.Read,
+                    bufferSize: 1024 * 1024);
+                zipWriter.Write(entryKey, fileStream);
+            }
         }
         private async Task LoadCompressedAsync(
             MovingFileModel model,

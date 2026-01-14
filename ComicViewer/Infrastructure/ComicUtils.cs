@@ -30,6 +30,8 @@ namespace ComicViewer.Services
         }
         public static string GetCommentOfZip(string filePath)
         {
+            if (!File.Exists(filePath) || Path.GetExtension(filePath) != ".zip")
+                return String.Empty;
             using (var zipStream = new FileStream(filePath, FileMode.Open, FileAccess.Read))
             {
                 try

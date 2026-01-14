@@ -609,7 +609,7 @@ namespace ComicViewer
         }
         private bool IsSupportedComicFile(string filePath)
         {
-            var extensions = new[] { ".cmc", ".zip", ".rar", ".7z" };
+            var extensions = new[] { ".cmc", ".zip", ".rar", ".7z", "" };
             var ext = Path.GetExtension(filePath).ToLower();
             return extensions.Contains(ext);
         }

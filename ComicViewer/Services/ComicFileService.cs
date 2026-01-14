@@ -35,6 +35,12 @@ namespace ComicViewer.Services
                 if (File.Exists(entry.Path))
                 {
                     File.Delete(entry.Path);
+                    return;
+                }
+                if (Directory.Exists(entry.Path))
+                {
+                    Directory.Delete(entry.Path, recursive: true);
+                    return;
                 }
             });
         }
@@ -202,6 +208,8 @@ namespace ComicViewer.Services
         {
             try
             {
+                if (!File.Exists(archivePath))
+                    return 0;
                 using var archive = ArchiveFactory.Open(archivePath);
 
                 return archive.Entries.Count();
@@ -223,14 +231,14 @@ namespace ComicViewer.Services
                     // 检查是否为.cmc文件
                     if (path.EndsWith(".cmc", StringComparison.OrdinalIgnoreCase))
                     {
-                        // 关键：流式读取，不解压
                         return LoadImageEntriesFromCmcStreaming(path);
                     }
-                    else
+                    if(Directory.Exists(path))
                     {
-                        // 普通压缩包
-                        return LoadImageEntriesFromArchive(path);
+                        return LoadImageEntriesFromFolder(path);
                     }
+                    // 普通压缩包
+                    return LoadImageEntriesFromArchive(path);
                 }
                 finally
                 {
@@ -243,6 +251,15 @@ namespace ComicViewer.Services
         {
             return GetComicZipInfo(cmcPath, true).fileNames!
                 .OrderBy(e => e, new NaturalStringComparer())
+                .ToList();
+        }
+
+        private List<string> LoadImageEntriesFromFolder(string folderPath)
+        {
+            return Directory.GetFiles(folderPath)
+                .Where(IsImageFile)
+                .Select(f => Path.GetRelativePath(folderPath, f))
+                .OrderBy(f => f, new NaturalStringComparer())
                 .ToList();
         }
 
@@ -276,6 +293,10 @@ namespace ComicViewer.Services
                     {
                         // 处理.cmc文件（tar包里的漫画包）
                         stream = LoadImageFromCmc(archivePath, entryName);
+                    }
+                    else if(Directory.Exists(archivePath))
+                    {
+                        stream = LoadImageEntriesFromFolder(archivePath, entryName);
                     }
                     else
                     {
@@ -326,6 +347,18 @@ namespace ComicViewer.Services
             }
 
             return null;
+        }
+
+        private MemoryStream LoadImageEntriesFromFolder(string folderPath, string entryName)
+        {
+            var fullPath = Path.Combine(folderPath, entryName);
+            var ms = new MemoryStream();
+            using (var fs = new FileStream(fullPath, FileMode.Open, FileAccess.Read))
+            {
+                fs.CopyTo(ms);
+            }
+            ms.Position = 0;
+            return ms;
         }
 
         private MemoryStream LoadImageFromRegularArchive(string archivePath, string entryName)
