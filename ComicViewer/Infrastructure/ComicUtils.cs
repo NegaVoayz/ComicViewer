@@ -2,6 +2,7 @@
 using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -263,6 +264,33 @@ namespace ComicViewer.Services
             }
 
             return result;
+        }
+        public static List<string> ParseTokens(string input, char[] delimiters)
+        {
+            if (string.IsNullOrWhiteSpace(input))
+                return new List<string>();
+
+            // 将分隔符转义用于正则表达式
+            string escapedDelimiters = string.Join("", delimiters
+                .Select(d => Regex.Escape(d.ToString())));
+
+            // 匹配：引号内的内容（非贪婪）| 非分隔符的连续字符
+            string pattern = @"
+                ""([^""]*)""          # 双引号内的内容
+                |
+                '([^']*)'            # 单引号内的内容  
+                |
+                [^" + escapedDelimiters + @"]+  # 非分隔符的连续字符
+            ";
+
+            var matches = Regex.Matches(input, pattern,
+                RegexOptions.IgnorePatternWhitespace);
+
+            return matches
+                .Cast<Match>()
+                .Select(m => m.Value.Trim('"', '\'').Trim()) // 去除引号和空白
+                .Where(token => !string.IsNullOrEmpty(token))
+                .ToList();
         }
 
     }

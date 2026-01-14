@@ -74,10 +74,10 @@ namespace ComicViewer
                 NewTagTextBox.Focus();
                 return;
             }
-            var newTagNames = NewTagTextBox.Text.Split(ComicUtils.TagDelimiterChars).Where(e => !string.IsNullOrWhiteSpace(e)).Select(e => e.Trim());
+            var newTagNames = ComicUtils.ParseTokens(NewTagTextBox.Text, ComicUtils.TagDelimiterChars);
             foreach (var name in newTagNames)
             {
-                var tokens = name.Split(ComicUtils.TagAliasChars).Select(e => e.Trim());
+                var tokens = ComicUtils.ParseTokens(name, ComicUtils.TagAliasChars);
                 HashSet<string> newAliases = new();
                 string? existingName = null;
                 bool isAuthorTag = false;
