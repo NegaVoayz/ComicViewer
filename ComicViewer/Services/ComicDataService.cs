@@ -282,11 +282,30 @@ namespace ComicViewer.Services
 
             await context.Tags.AddRangeAsync(
                 tagNames.Select(e => new TagData
-                    {
-                        Key = ComicUtils.CalculateMD5(e),
-                        Name = e,
-                        Count = 0
-                    }));
+                {
+                    Key = ComicUtils.CalculateMD5(e),
+                    Name = e,
+                    Count = 0
+                }));
+            await context.SaveChangesAsync();
+        }
+
+        public async Task AddTagsSafeAsync(IEnumerable<string> tagNames)
+        {
+            await using var context = await _contextFactory.CreateDbContextAsync();
+
+            var tagKeys = tagNames.Select(ComicUtils.CalculateMD5).ToHashSet();
+            var existing = await context.Tags.Select(e => e.Key).Where(e => tagKeys.Contains(e)).ToHashSetAsync();
+
+            await context.Tags.AddRangeAsync(
+                tagNames
+                .Where(e => !existing.Contains(ComicUtils.CalculateMD5(e)))
+                .Select(e => new TagData
+                {
+                    Key = ComicUtils.CalculateMD5(e),
+                    Name = e,
+                    Count = 0
+                }));
             await context.SaveChangesAsync();
         }
 

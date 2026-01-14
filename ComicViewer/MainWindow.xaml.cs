@@ -386,7 +386,7 @@ namespace ComicViewer
                     comic.Author = string.Join(", ", newAuthors);
 
                     await service.DataService.RemoveTagsFromComicAsync(comic.Key, removedAuthorTagNames);
-                    await service.DataService.AddTagsAsync(addedAuthorTagNames);
+                    await service.DataService.AddTagsSafeAsync(addedAuthorTagNames);
                     await service.DataService.AddTagsToComicAsync(comic.Key, addedAuthorTagKeys);
 
                     // 显示反馈
