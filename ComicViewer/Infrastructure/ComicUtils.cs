@@ -212,20 +212,6 @@ namespace ComicViewer.Services
                 return sb.ToString();
             }
         }
-        public static bool IsCrossDeviceException(IOException ex)
-        {
-            const int ERROR_NOT_SAME_DEVICE = 0x11;        // 17 (Windows)
-            const int ERROR_INVALID_PARAMETER = 0x57;      // 87 (Windows - 某些情况)
-            const int EXDEV = 18;                          // Unix/Linux/macOS
-
-            // 获取 HResult（Windows）或 ErrorCode（Unix）
-            int errorCode = ex.HResult & 0xFFFF;
-
-            // 检查常见错误码
-            return errorCode == ERROR_NOT_SAME_DEVICE ||
-                   errorCode == ERROR_INVALID_PARAMETER ||
-                   errorCode == EXDEV;
-        }
 
         // For paths that could be a link
         public static string GetFileRealPath(string path)
