@@ -443,6 +443,8 @@
                         <!-- 漫画卡片模板 -->
                         <Border Style="{StaticResource CompactComicCard}"
                                 ToolTip="{Binding Converter={StaticResource ToolTipConverter}}"
+                                ToolTipService.InitialShowDelay="600"
+                                ToolTipService.BetweenShowDelay="0"
                                 MouseLeftButtonUp="ComicCard_Click">
                             <Border.ContextMenu>
                                 <ContextMenu>
@@ -520,7 +522,7 @@
                                            TextTrimming="CharacterEllipsis"
                                            Foreground="White"/>
 
-                                        <TextBlock Text="{Binding Source}" 
+                                        <TextBlock Text="{Binding Author}" 
                                            FontSize="10"
                                            Foreground="#CCCCCC"
                                            Margin="5,0,5,5"

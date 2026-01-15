@@ -721,15 +721,6 @@ namespace ComicViewer
             }
         }
 
-        // 滚轮加速
-        private void OnPreviewMouseWheel(object sender, MouseWheelEventArgs e)
-        {
-            var scrollViewer = (ScrollViewer)sender;
-            scrollViewer.ScrollToVerticalOffset(
-                scrollViewer.VerticalOffset - e.Delta);
-            e.Handled = true;
-        }
-
         private void CopyDirectoryPath_Click(object sender, RoutedEventArgs e)
         {
             try
