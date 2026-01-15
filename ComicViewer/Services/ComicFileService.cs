@@ -253,10 +253,11 @@ namespace ComicViewer.Services
                 .OrderBy(e => e, new NaturalStringComparer())
                 .ToList();
         }
-
         private List<string> LoadImageEntriesFromFolder(string folderPath)
         {
-            return Directory.GetFiles(folderPath)
+            var files = Directory.EnumerateFiles(folderPath, "*", SearchOption.AllDirectories);
+
+            return files.AsParallel()
                 .Where(IsImageFile)
                 .Select(f => Path.GetRelativePath(folderPath, f))
                 .OrderBy(f => f, new NaturalStringComparer())
