@@ -176,10 +176,7 @@ namespace ComicViewer.Models
                 {
                     return cachedCover;
                 }
-                if (_coverTask == null)
-                {
-                    Load();
-                }
+                Load();
                 return _PlaceholderImage;
             }
         }
@@ -321,7 +318,6 @@ namespace ComicViewer.Models
             if (_coverTask == null)
             {
                 RefreshCover();
-                Debug.WriteLine($"Loading cover for comic {Title}");
             }
         }
 

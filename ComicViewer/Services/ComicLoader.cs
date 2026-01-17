@@ -51,13 +51,19 @@ namespace ComicViewer.Services
                 var dest = ComicUtils.ComicNormalPath(comic.Key);
                 if(!File.Exists(dest))
                     File.Move(filePath, dest);
+                service.FileService.AddComicPath(comic.Key, ComicUtils.ComicNormalPath(comic.Key));
                 await service.DataService.AddComicAsync(comic);
             }
             else
             {
-                service.FileService.AddComicTempPath(comic.Key, filePath);
+                service.FileService.AddComicPath(comic.Key, filePath);
                 await service.DataService.AddComicAsync(comic);
-                await service.FileLoader.AddMovingTask(comic.Key, filePath);
+                await service.FileLoader.AddMovingTask(new MovingFileModel
+                {
+                    Key = comic.Key,
+                    SourcePath = filePath,
+                    DestinationPath = ComicUtils.ComicNormalPath(comic.Key)
+                });
             }
 
             await service.DataService.AddTagsToComicAsync(comic.Key, comicMetadata.GetTagKeys());
@@ -69,12 +75,17 @@ namespace ComicViewer.Services
         public async Task MigrateComicLibrary(string sourcePath, string destinationPath)
         {
             var comics = await service.DataService.GetAllComicsAsync();
+            if(Path.GetPathRoot(sourcePath) == Path.GetPathRoot(destinationPath))
+            {
+                Directory.Move(sourcePath, destinationPath);
+                return;
+            }
             foreach (var comic in comics)
             {
                 var fileName = $"{comic.Key}.zip";
                 var sourceFilePath = Path.Combine(sourcePath, fileName);
                 var destFilePath = Path.Combine(destinationPath, fileName);
-                service.FileService.AddComicTempPath(comic.Key, sourceFilePath);
+                service.FileService.AddComicPath(comic.Key, sourceFilePath);
                 await service.FileLoader.AddMovingTask(new MovingFileModel
                 {
                     Key = comic.Key,

@@ -1,174 +1,127 @@
-﻿using ComicViewer.Models;
+﻿using ComicViewer.Infrastructure;
+using ComicViewer.Models;
 using SharpCompress.Archives;
 using SharpCompress.Common;
 using SharpCompress.Readers;
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows.Media.Imaging;
 
 namespace ComicViewer.Services
 {
-    class Entry
+    class EntryData
     {
-        public required string Path { get; set; }
-        public int UseCount { get; set; }
-        public Func<Entry, Task> OnRemove { get; set; } = _ => Task.CompletedTask;
+        public int UseCount = 0;
+        public bool Deprecated = false;
     }
     public class ComicFileService
     {
-        private Dictionary<string, Entry> comicNormalPathDict = new();
+        // todo refactor:
+        private Dictionary<string, string> comicPathDict = new();
 
-        private Dictionary<string, Entry> comicTempPathDict = new();
-
-        private readonly object _lock = new object();
+        private ConcurrentDictionary<string, EntryData> pathDataDict = new();
 
         private readonly ComicService service;
 
         public ComicFileService(ComicService service)
         {
             this.service = service;
+
+            service.Load.Add(new DAGTask
+            {
+                name = "FileService",
+                task = Initialize,
+                requirements = { "DataService" }
+            });
         }
-        private static async Task RemoveFile(Entry entry)
+
+        private async Task Initialize()
+        {
+            foreach(var comic in await service.DataService.GetAllComicsAsync())
+            {
+                var path = ComicUtils.ComicNormalPath(comic.Key);
+                if (!File.Exists(path)) continue;
+                comicPathDict[comic.Key] = path;
+                pathDataDict[path] = new EntryData { UseCount = 0, Deprecated = false };
+            }
+        }
+        private static async Task RemoveFile(string path)
         {
             await Task.Run(() =>
             {
-                if (File.Exists(entry.Path))
+                if (File.Exists(path))
                 {
-                    File.Delete(entry.Path);
+                    Debug.WriteLine($"Deleting file: {path}");
+                    File.Delete(path);
                     return;
                 }
-                if (Directory.Exists(entry.Path))
+                if (Directory.Exists(path))
                 {
-                    Directory.Delete(entry.Path, recursive: true);
+                    Debug.WriteLine($"Deleting directory: {path}");
+                    Directory.Delete(path, recursive: true);
                     return;
                 }
+                Debug.WriteLine($"File or directory not found for deletion: {path}");
             });
         }
-        private static readonly Func<Entry, Task> DoNothing = _ => Task.CompletedTask;
 
-        public bool AddComicTempPath(string Key, string path)
+        public bool AddComicPath(string Key, string path)
         {
-            lock (_lock)
+            if (comicPathDict.TryGetValue(Key, out var OldPath))
             {
-                if (comicTempPathDict.TryGetValue(Key, out var entry))
-                {
-                    entry.UseCount++;
-                    return false;
-                }
-                else
-                {
-                    comicTempPathDict[Key] = new Entry { Path = path, OnRemove = RemoveFile, UseCount = 1 };
-                    return true;
-                }
+                if (OldPath == path) return false;
+                pathDataDict[OldPath].Deprecated = true;
             }
+            comicPathDict[Key] = path;
+            pathDataDict[path] = new EntryData { UseCount = 0, Deprecated = false };
+            return true;
         }
 
-        public bool RemoveComicTempPath(string Key)
+        public bool DeprecateComic(string key)
         {
-            lock (_lock)
+            if (!comicPathDict.TryGetValue(key, out var path))
             {
-                if (!comicTempPathDict.TryGetValue(Key, out var entry))
-                {
-                    return false;
-                }
-                entry.UseCount--;// the copier no longer occupies the file.
-
-                if (entry.UseCount == 0)
-                {
-                    comicTempPathDict.Remove(Key);
-                    entry.OnRemove(entry);
-                    return true;
-                }
+                return false;
+            }
+            if (!pathDataDict.TryGetValue(path, out var entry))
+            {
+                return false;
+            }
+            if (entry.UseCount == 0)
+            {
+                pathDataDict.Remove(path, out _);
+                _ = RemoveFile(path);
                 return true;
             }
-        }
 
-        public void GenerateComicPath(string Key)
-        {
-            lock (_lock)
-            {
-                if (comicNormalPathDict.TryGetValue(Key, out var entry))
-                {
-                    return;
-                }
-                var path = ComicUtils.ComicNormalPath(Key);
-                comicNormalPathDict[Key] = new Entry { Path = path, OnRemove = DoNothing, UseCount = 0 };
-                return;
-            }
+            entry.Deprecated = true;
+            return true;
         }
 
         public string GetComicPath(string Key)
         {
-            lock (_lock)
-            {
-                Entry? entry;
-                foreach (var dict in new Dictionary<string, Entry>[] { comicNormalPathDict, comicTempPathDict })
-                {
-                    if (dict.TryGetValue(Key, out entry))
-                    {
-                        entry.UseCount++;
-                        return entry.Path;
-                    }
-                }
-                var path = ComicUtils.ComicNormalPath(Key);
-                comicNormalPathDict[Key] = new Entry { Path = path, OnRemove = DoNothing, UseCount = 1 };
-                return path;
-            }
+            var path = comicPathDict[Key];
+            pathDataDict[path].UseCount++;
+            return path;
         }
 
-        public void ReleaseComicPath(string Key, string path)
+        public void ReleaseComicPath(string path)
         {
-            lock (_lock)
+            var entry = pathDataDict[path];
+            entry.UseCount--;
+            if (entry.Deprecated && entry.UseCount == 0)
             {
-                Entry? entry;
-                if (comicNormalPathDict.TryGetValue(Key, out entry) && entry.Path == path)
-                {
-                    entry.UseCount--;
-                    // if no using and no routing overwrite needed
-                    if (entry.UseCount <= 0 && !comicTempPathDict.TryGetValue(Key, out _))
-                    {
-                        comicNormalPathDict.Remove(Key);
-                        entry.OnRemove(entry);
-                    }
-                    return;
-                }
-                if (comicTempPathDict.TryGetValue(Key, out entry) && entry.Path == path)
-                {
-                    entry.UseCount--;
-                    if (entry.UseCount <= 0)
-                    {
-                        comicTempPathDict.Remove(Key);
-                        entry.OnRemove(entry);
-                    }
-                }
+                pathDataDict.Remove(path,out _);
+                _ = RemoveFile(path);
             }
         }
 
         public async Task RemoveComicAsync(string Key)
         {
-            bool loaded = true;
-            if (comicTempPathDict.TryGetValue(Key, out _))// not opened operation
-            {
-                // if stoppable, it isn't loaded
-                loaded = !(await service.FileLoader.StopMovingTask(Key));
-            }
-            lock (_lock)
-            {
-                if (comicNormalPathDict.TryGetValue(Key, out var entry))
-                {
-                    entry.OnRemove = RemoveFile;
-                    if (entry.UseCount == 0)
-                    {
-                        comicNormalPathDict.Remove(Key);
-                        entry.OnRemove(entry).Wait();
-                    }
-                    return;
-                }
-            }
-            if (loaded)
-            {
-                await RemoveFile(new Entry { Path = ComicUtils.ComicNormalPath(Key), OnRemove = RemoveFile, UseCount = 0 });
-            }
+            await service.FileLoader.StopMovingTask(Key);
+            DeprecateComic(Key);
             return;
         }
 
@@ -194,7 +147,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic.Key, path);
+                    ReleaseComicPath(path);
                 }
             });
         }
@@ -242,7 +195,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic.Key, path);
+                    ReleaseComicPath(path);
                 }
             });
         }
@@ -312,7 +265,7 @@ namespace ComicViewer.Services
                 }
                 finally
                 {
-                    ReleaseComicPath(comic.Key, archivePath);
+                    ReleaseComicPath(archivePath);
                 }
             });
         }

@@ -51,19 +51,9 @@ namespace ComicViewer.Services
                     await service.DataService.RemoveComicAsync(movingTask.Key);
                     continue;
                 }
-                service.FileService.AddComicTempPath(movingTask.Key, movingTask.SourcePath);
+                service.FileService.AddComicPath(movingTask.Key, movingTask.SourcePath);
                 StartMovingTask(movingTask, true);
             }
-        }
-        public async Task AddMovingTask(string Key, string sourcePath)
-        {
-            var model = new MovingFileModel
-            {
-                Key = Key,
-                SourcePath = sourcePath,
-                DestinationPath = System.IO.Path.Combine(Configs.GetFilePath(), $"{Key}.zip")
-            };
-            await AddMovingTask(model);
         }
         public async Task AddMovingTask(MovingFileModel model)
         {
@@ -154,7 +144,7 @@ namespace ComicViewer.Services
                     cancellation.ThrowIfCancellationRequested();
                     await LoadFolderAsync(model);
                     cancellation.ThrowIfCancellationRequested();
-                    service.FileService.GenerateComicPath(model.Key);
+                    service.FileService.AddComicPath(model.Key, model.DestinationPath);
                     return;
                 }
                 string srcExt = System.IO.Path.GetExtension(model.SourcePath);
@@ -172,7 +162,7 @@ namespace ComicViewer.Services
                     await LoadCompressedAsync(model, cancellation);
                 }
                 cancellation.ThrowIfCancellationRequested();
-                service.FileService.GenerateComicPath(model.Key);
+                service.FileService.AddComicPath(model.Key, model.DestinationPath);
             }
             catch (OperationCanceledException)
             {
@@ -182,13 +172,12 @@ namespace ComicViewer.Services
             {
                 // 其他异常也清理
                 await CleanupFileAsync(model.DestinationPath);
-                //await service.DataService.DoneMovingTaskAsync(model);
+                service.FileService.DeprecateComic(model.Key);
                 await service.DataService.RemoveComicAsync(model.Key);
                 throw;
             }
             finally
             {
-                service.FileService.RemoveComicTempPath(model.Key);
                 await service.DataService.DoneMovingTaskAsync(model);
             }
             return;

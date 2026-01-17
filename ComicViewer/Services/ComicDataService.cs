@@ -599,8 +599,13 @@ namespace ComicViewer.Services
                 if (await service.FileLoader.StopMovingTask(comicKey))
                 {
                     var tempPath = service.FileService.GetComicPath(comicKey);
-                    service.FileService.AddComicTempPath(newKey, tempPath);
-                    await service.FileLoader.AddMovingTask(newKey, tempPath);
+                    service.FileService.AddComicPath(newKey, tempPath);
+                    await service.FileLoader.AddMovingTask(new MovingFileModel
+                    {
+                        Key = newKey,
+                        SourcePath = tempPath,
+                        DestinationPath = ComicUtils.ComicNormalPath(newKey)
+                    });
                 }
                 else
                 {

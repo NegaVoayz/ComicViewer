@@ -94,7 +94,7 @@ namespace ComicViewer.Services
             }
             finally
             {
-                service.FileService.ReleaseComicPath(comic.Key, sourceFilePath);
+                service.FileService.ReleaseComicPath(sourceFilePath);
             }
         }
     }

@@ -452,7 +452,7 @@ namespace ComicViewer
             }
             finally
             {
-                service.FileService.ReleaseComicPath(comic.Key, filePath);
+                service.FileService.ReleaseComicPath(filePath);
             }
         }
 

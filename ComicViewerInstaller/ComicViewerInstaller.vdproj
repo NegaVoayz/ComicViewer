@@ -274,15 +274,15 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:ComicViewer"
-        "ProductCode" = "8:{8A422DD3-C534-4021-864B-D1E290A8E608}"
-        "PackageCode" = "8:{1D38B228-EB2B-48BC-8197-EA755E6A4B02}"
-        "UpgradeCode" = "8:{8A7BBF86-5E3A-4DF5-A9AE-CC37CFEBD7DA}"
+        "ProductCode" = "8:{6F2C9565-66BE-4A02-9B4C-E11CD07667C1}"
+        "PackageCode" = "8:{2B2E3956-8964-47D8-9FFA-F589A12DD466}"
+        "UpgradeCode" = "8:{38C1C81D-D9B2-456C-BC0E-C462D54C8231}"
         "AspNetVersion" = "8:2.0.50727.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
         "DetectNewerInstalledVersion" = "11:TRUE"
         "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:1.1.0"
+        "ProductVersion" = "8:1.1.1"
         "Manufacturer" = "8:Nega"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:"
@@ -838,7 +838,7 @@
         {
             "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_8C880C21E2CE48D9B0AF560C095A7F2A"
             {
-            "SourcePath" = "8:..\\ComicViewer\\obj\\x64\\Release\\net8.0-windows\\apphost.exe"
+            "SourcePath" = "8:..\\ComicViewer\\obj\\x64\\Release\\net10.0-windows10.0.17763.0\\apphost.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_5C284FC3CCC04E5E9316BFB4C948AD77"
