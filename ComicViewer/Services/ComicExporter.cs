@@ -22,7 +22,7 @@ namespace ComicViewer.Services
         public async Task CreateSharePackageAsync(ComicModel comic, string destinationPath)
         {
             using var sourceFilePath = service.FileService.GetComicPath(comic.Key);
-            if (sourceFilePath.Extension.Equals(".zip",StringComparison.OrdinalIgnoreCase))
+            if (!sourceFilePath.Extension.Equals(".zip",StringComparison.OrdinalIgnoreCase))
             {
                 // nope, that's not what we want
                 return;
