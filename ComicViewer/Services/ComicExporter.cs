@@ -21,81 +21,74 @@ namespace ComicViewer.Services
 
         public async Task CreateSharePackageAsync(ComicModel comic, string destinationPath)
         {
-            string sourceFilePath = service.FileService.GetComicPath(comic.Key);
-            try
+            using var sourceFilePath = service.FileService.GetComicPath(comic.Key);
+            if (sourceFilePath.Extension.Equals(".zip",StringComparison.OrdinalIgnoreCase))
             {
-                if (Path.GetExtension(sourceFilePath) != ".zip")
-                {
-                    // nope, that's not what we want
-                    return;
-                }
-                var comicData = service.DataService.GetComicData(comic.Key);
-                if (comicData == null)
-                {
-                    return;
-                }
+                // nope, that's not what we want
+                return;
+            }
+            var comicData = service.DataService.GetComicData(comic.Key);
+            if (comicData == null)
+            {
+                return;
+            }
 
-                // if just export.
-                if (Path.GetExtension(destinationPath) == ".zip")
+            // if just export.
+            if (Path.GetExtension(destinationPath).Equals(".zip", StringComparison.OrdinalIgnoreCase))
+            {
+                string fileName = Path.GetFileNameWithoutExtension(destinationPath);
+                string fullPath = destinationPath;
+                if (fileName == comic.Title)
                 {
-                    string fileName = Path.GetFileNameWithoutExtension(destinationPath);
-                    string fullPath = destinationPath;
-                    if (fileName == comic.Title)
+                    string? directory = Path.GetDirectoryName(destinationPath);
+                    var allTags = (await service.DataService.GetTagsOfComic(comic.Key))
+                        .Select(e => e.Name);
+                    var authors = allTags.Where(e => e.StartsWith(ComicUtils.AuthorPrefix)).Select(e => e.Substring(ComicUtils.AuthorPrefix.Length));
+                    var tags = allTags.Where(e => !e.StartsWith(ComicUtils.AuthorPrefix));
+                    string processedName = ComicUtils.GetCombinedName(authors, comic.Title, tags);
+                    processedName = $"{processedName}.zip";
+                    if (directory != null)
                     {
-                        string? directory = Path.GetDirectoryName(destinationPath);
-                        var allTags = (await service.DataService.GetTagsOfComic(comic.Key))
-                            .Select(e => e.Name);
-                        var authors = allTags.Where(e => e.StartsWith(ComicUtils.AuthorPrefix)).Select(e => e.Substring(ComicUtils.AuthorPrefix.Length));
-                        var tags = allTags.Where(e => !e.StartsWith(ComicUtils.AuthorPrefix));
-                        string processedName = ComicUtils.GetCombinedName(authors, comic.Title, tags);
-                        processedName = $"{processedName}.zip";
-                        if (directory != null)
-                        {
-                            fullPath = Path.Combine(directory, processedName);
-                        }
-                        else
-                        {
-                            fullPath = processedName;
-                        }
+                        fullPath = Path.Combine(directory, processedName);
                     }
-                    await Task.Run(() =>
+                    else
                     {
-                        File.Copy(sourceFilePath, fullPath, true);
-                        ComicUtils.AddCommentToZip(fullPath, comic.Source);
-                    });
-                    MessageBox.Show("分享包创建成功！");
-                    return;
+                        fullPath = processedName;
+                    }
                 }
-
-                await Task.Run(async () =>
+                await Task.Run(() =>
                 {
-                    using var tarStream = File.Create(destinationPath);
-                    using var tarWriter = WriterFactory.Open(tarStream, ArchiveType.Tar, new WriterOptions(CompressionType.None));
-
-                    // 1. 添加漫画文件
-                    tarWriter.Write("comic.zip", sourceFilePath);
-
-                    // 2. 添加metadata.json
-                    var metadata = comicData.ToComicMetadata();
-                    var tags = await service.DataService.GetTagsOfComic(comicData.Key);
-                    metadata.Tags = tags.Select(e => e.Name).ToList();
-                    var metadataJson = JsonSerializer.Serialize(metadata);
-                    var metadataBytes = Encoding.UTF8.GetBytes(metadataJson);
-
-                    // 使用MemoryStream添加内容
-                    using var memoryStream = new MemoryStream(metadataBytes);
-                    tarWriter.Write("metadata.json", memoryStream, DateTime.Now);
-
-                    // 确保写入完成
-                    tarWriter.Dispose();
-                    await tarStream.FlushAsync();
-                    MessageBox.Show("分享包创建成功！");
+                    File.Copy(sourceFilePath, fullPath, true);
+                    ComicUtils.AddCommentToZip(fullPath, comic.Source);
                 });
+                MessageBox.Show("分享包创建成功！");
+                return;
             }
-            finally
+
+            await Task.Run(async () =>
             {
-                service.FileService.ReleaseComicPath(sourceFilePath);
-            }
+                using var tarStream = File.Create(destinationPath);
+                using var tarWriter = WriterFactory.Open(tarStream, ArchiveType.Tar, new WriterOptions(CompressionType.None));
+
+                // 1. 添加漫画文件
+                tarWriter.Write("comic.zip", sourceFilePath);
+
+                // 2. 添加metadata.json
+                var metadata = comicData.ToComicMetadata();
+                var tags = await service.DataService.GetTagsOfComic(comicData.Key);
+                metadata.Tags = tags.Select(e => e.Name).ToList();
+                var metadataJson = JsonSerializer.Serialize(metadata);
+                var metadataBytes = Encoding.UTF8.GetBytes(metadataJson);
+
+                // 使用MemoryStream添加内容
+                using var memoryStream = new MemoryStream(metadataBytes);
+                tarWriter.Write("metadata.json", memoryStream, DateTime.Now);
+
+                // 确保写入完成
+                tarWriter.Dispose();
+                await tarStream.FlushAsync();
+                MessageBox.Show("分享包创建成功！");
+            });
         }
     }
 

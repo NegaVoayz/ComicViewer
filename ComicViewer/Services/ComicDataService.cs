@@ -596,23 +596,26 @@ namespace ComicViewer.Services
                 await context.ComicTags.Where(e => e.ComicKey == comic.Key)
                     .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.ComicKey, newKey));
 
-                if (await service.FileLoader.StopMovingTask(comicKey))
+                var dest = ComicUtils.ComicNormalPath(newKey);
+                if (File.Exists(dest))
+                    File.Delete(dest);
+                using ( var src = service.FileService.GetComicPath(comicKey))
                 {
-                    var tempPath = service.FileService.GetComicPath(comicKey);
-                    service.FileService.AddComicPath(newKey, tempPath);
-                    await service.FileLoader.AddMovingTask(new MovingFileModel
+                    if (await service.FileLoader.StopMovingTask(comicKey))
                     {
-                        Key = newKey,
-                        SourcePath = tempPath,
-                        DestinationPath = ComicUtils.ComicNormalPath(newKey)
-                    });
-                }
-                else
-                {
-                    var dest = ComicUtils.ComicNormalPath(newKey);
-                    if (File.Exists(dest))
-                        File.Delete(dest);
-                    File.Move(ComicUtils.ComicNormalPath(comicKey), dest);
+                        service.FileService.AddComicPath(newKey, src);
+                        await service.FileLoader.AddMovingTask(new MovingFileModel
+                        {
+                            Key = newKey,
+                            SourcePath = src,
+                            DestinationPath = dest
+                        });
+                    }
+                    else
+                    {
+                        File.Move(src, dest);
+                        service.FileService.AddComicPath(newKey, dest);
+                    }
                 }
 
                 await service.FileService.RemoveComicAsync(comicKey);

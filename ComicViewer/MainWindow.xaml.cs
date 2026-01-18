@@ -422,7 +422,7 @@ namespace ComicViewer
 
         private async Task OpenComicArchive(ComicModel comic)
         {
-            var filePath = service.FileService.GetComicPath(comic.Key);
+            using var filePath = service.FileService.GetComicPath(comic.Key);
             try
             {
                 if (File.Exists(filePath))
@@ -449,10 +449,6 @@ namespace ComicViewer
             catch (Exception ex)
             {
                 MessageBox.Show($"无法打开文件位置: {ex.Message}");
-            }
-            finally
-            {
-                service.FileService.ReleaseComicPath(filePath);
             }
         }
 

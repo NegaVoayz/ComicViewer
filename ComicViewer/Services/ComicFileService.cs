@@ -11,13 +11,38 @@ using System.Windows.Media.Imaging;
 
 namespace ComicViewer.Services
 {
-    class EntryData
-    {
-        public int UseCount = 0;
-        public bool Deprecated = false;
-    }
     public class ComicFileService
     {
+        public class PathEntry : IDisposable
+        {
+            private readonly ComicFileService _fileService;
+            private readonly string _path;
+            public PathEntry(ComicFileService fileService, string path)
+            {
+                _fileService = fileService;
+                _path = path;
+            }
+            public static implicit operator string(PathEntry path)
+            {
+                return path._path;
+            }
+            public bool EndsWith(string value) => _path.EndsWith(value);
+            public bool EndsWith(string value, StringComparison comparisonType) => _path.EndsWith(value, comparisonType);
+            public bool StartsWith(string value) => _path.StartsWith(value);
+            public bool StartsWith(string value, StringComparison comparisonType) => _path.StartsWith(value, comparisonType);
+            public string Extension => System.IO.Path.GetExtension(_path);
+            public override string ToString() => _path;
+            public void Dispose()
+            {
+                _fileService.ReleaseComicPath(_path);
+            }
+        }
+        private class EntryData
+        {
+            public int UseCount = 0;
+            public bool Deprecated = false;
+        }
+
         // todo refactor:
         private Dictionary<string, string> comicPathDict = new();
 
@@ -100,17 +125,18 @@ namespace ComicViewer.Services
             return true;
         }
 
-        public string GetComicPath(string Key)
+        public PathEntry GetComicPath(string Key)
         {
             var path = comicPathDict[Key];
             pathDataDict[path].UseCount++;
-            return path;
+            return new PathEntry(this, path);
         }
 
-        public void ReleaseComicPath(string path)
+        private void ReleaseComicPath(string path)
         {
             var entry = pathDataDict[path];
             entry.UseCount--;
+            Debug.WriteLine($"{path} used {pathDataDict[path].UseCount} times");
             if (entry.Deprecated && entry.UseCount == 0)
             {
                 pathDataDict.Remove(path,out _);
@@ -129,25 +155,18 @@ namespace ComicViewer.Services
         {
             return await Task.Run(() =>
             {
-                var path = GetComicPath(comic.Key);
+                using var path = GetComicPath(comic.Key);
 
-                try
+                // 检查是否为.cmc文件
+                if (path.EndsWith(".cmc", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 检查是否为.cmc文件
-                    if (path.EndsWith(".cmc", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // 关键：流式读取，不解压
-                        return CountComicLengthFromCmcStreaming(path);
-                    }
-                    else
-                    {
-                        // 普通压缩包
-                        return CountComicLengthFromArchive(path);
-                    }
+                    // 关键：流式读取，不解压
+                    return CountComicLengthFromCmcStreaming(path);
                 }
-                finally
+                else
                 {
-                    ReleaseComicPath(path);
+                    // 普通压缩包
+                    return CountComicLengthFromArchive(path);
                 }
             });
         }
@@ -177,26 +196,18 @@ namespace ComicViewer.Services
         {
             return await Task.Run(() =>
             {
-                var path = GetComicPath(comic.Key);
-
-                try
+                using var path = GetComicPath(comic.Key);
+                // 检查是否为.cmc文件
+                if (path.Extension.Equals(".cmc", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 检查是否为.cmc文件
-                    if (path.EndsWith(".cmc", StringComparison.OrdinalIgnoreCase))
-                    {
-                        return LoadImageEntriesFromCmcStreaming(path);
-                    }
-                    if(Directory.Exists(path))
-                    {
-                        return LoadImageEntriesFromFolder(path);
-                    }
-                    // 普通压缩包
-                    return LoadImageEntriesFromArchive(path);
+                    return LoadImageEntriesFromCmcStreaming(path);
                 }
-                finally
+                if(Directory.Exists(path))
                 {
-                    ReleaseComicPath(path);
+                    return LoadImageEntriesFromFolder(path);
                 }
+                // 普通压缩包
+                return LoadImageEntriesFromArchive(path);
             });
         }
 
@@ -239,34 +250,27 @@ namespace ComicViewer.Services
         {
             return await Task.Run(async () =>
             {
-                var archivePath = GetComicPath(comic.Key);
-                try
+                using var archivePath = GetComicPath(comic.Key);
+                MemoryStream? stream;
+                if (archivePath.Extension.Equals(".cmc", StringComparison.OrdinalIgnoreCase))
                 {
-                    MemoryStream? stream;
-                    if (Path.GetExtension(archivePath).Equals(".cmc", StringComparison.OrdinalIgnoreCase))
-                    {
-                        // 处理.cmc文件（tar包里的漫画包）
-                        stream = LoadImageFromCmc(archivePath, entryName);
-                    }
-                    else if(Directory.Exists(archivePath))
-                    {
-                        stream = LoadImageEntriesFromFolder(archivePath, entryName);
-                    }
-                    else
-                    {
-                        // 处理普通压缩包
-                        stream = LoadImageFromRegularArchive(archivePath, entryName);
-                    }
-                    if (stream == null)
-                    {
-                        return null;
-                    }
-                    return CreateBitmapImage(stream, maxHeight, maxWidth);
+                    // 处理.cmc文件（tar包里的漫画包）
+                    stream = LoadImageFromCmc(archivePath, entryName);
                 }
-                finally
+                else if(Directory.Exists(archivePath))
                 {
-                    ReleaseComicPath(archivePath);
+                    stream = LoadImageEntriesFromFolder(archivePath, entryName);
                 }
+                else
+                {
+                    // 处理普通压缩包
+                    stream = LoadImageFromRegularArchive(archivePath, entryName);
+                }
+                if (stream == null)
+                {
+                    return null;
+                }
+                return CreateBitmapImage(stream, maxHeight, maxWidth);
             });
         }
 
