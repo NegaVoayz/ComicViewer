@@ -253,7 +253,7 @@ namespace ComicViewer.Models
                 }
 
                 var images = await service.FileService.LoadImageEntriesAsync(this);
-                var coverName = images.First();
+                var coverName = images.FirstOrDefault(e => e.StartsWith("cover", StringComparison.OrdinalIgnoreCase)) ?? images.First();
 
                 var cover = await service.FileService.LoadImageAsync(this, coverName, 350, 280);
                 if (cover != null)

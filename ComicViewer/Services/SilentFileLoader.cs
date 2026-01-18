@@ -147,7 +147,7 @@ namespace ComicViewer.Services
                     service.FileService.AddComicPath(model.Key, model.DestinationPath);
                     return;
                 }
-                string srcExt = System.IO.Path.GetExtension(model.SourcePath);
+                string srcExt = Path.GetExtension(model.SourcePath);
                 cancellation.ThrowIfCancellationRequested();
                 if (srcExt == ".cmc")
                 {

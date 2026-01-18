@@ -103,7 +103,7 @@ namespace ComicViewer.Services
             if (comicPathDict.TryGetValue(Key, out var OldPath))
             {
                 if (OldPath == path) return false;
-                pathDataDict[OldPath].Deprecated = true;
+                DeprecatePath(OldPath);
             }
             comicPathDict[Key] = path;
             pathDataDict[path] = new EntryData { UseCount = 0, Deprecated = false };
@@ -112,16 +112,23 @@ namespace ComicViewer.Services
 
         public bool DeprecateComic(string key)
         {
-            if (!comicPathDict.TryGetValue(key, out var path))
+            if (comicPathDict.TryGetValue(key, out var path))
             {
-                return false;
+                return DeprecatePath(path);
             }
+            return false;
+        }
+
+        public bool DeprecatePath(string path)
+        {
             if (!pathDataDict.TryGetValue(path, out var entry))
             {
                 return false;
             }
+            Debug.WriteLine($"{path} deprecated");
             if (entry.UseCount == 0)
             {
+                Debug.WriteLine($"{path} removed");
                 pathDataDict.Remove(path, out _);
                 _ = RemoveFile(path);
                 return true;
@@ -145,6 +152,7 @@ namespace ComicViewer.Services
             Debug.WriteLine($"{path} used {pathDataDict[path].UseCount} times");
             if (entry.Deprecated && entry.UseCount == 0)
             {
+                Debug.WriteLine($"{path} removed");
                 pathDataDict.Remove(path, out _);
                 _ = RemoveFile(path);
             }
