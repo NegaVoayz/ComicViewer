@@ -63,8 +63,8 @@ namespace ComicViewer.Services
             }
 
             // 构建标签字符串，每个标签用ASCII中括号包裹
-            var tagStrings = tags.Select(tag => $"[{tag}]");
-            var authorStrings = authors.Select(author => $"[{author}]");
+            var tagStrings = tags.Select(tag => $"[{tag}]").Take(3);
+            var authorStrings = authors.Select(author => $"[{author}]").Take(3);
 
             // 用空格连接所有部分
             string result = $"{string.Join(" ", authorStrings)} {name} {string.Join(" ", tagStrings)}";
@@ -175,13 +175,11 @@ namespace ComicViewer.Services
             // 获取文件信息
             FileInfo fileInfo = new FileInfo(filePath);
 
-            var source = GetCommentOfZip(filePath);
-
             return new ComicMetadata
             {
                 Version = "1.0",
                 Title = title,
-                Source = source.Length == 0 ? fileName : source,
+                Source = fileName,
                 Tags = tags,
                 System = new SystemInfo
                 {

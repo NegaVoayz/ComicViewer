@@ -36,7 +36,15 @@ namespace ComicViewer.Services
             }
             else
             {
-                comicMetadata = ComicUtils.CreateComicDataFromFilePath(filePath);
+                if (Path.GetExtension(filePath) == ".zip")
+                {
+                    var comment = ComicUtils.GetCommentOfZip(filePath);
+                    comicMetadata = JsonSerializer.Deserialize<ComicMetadata>(comment);
+                }
+                if(comicMetadata == null)
+                {
+                    comicMetadata = ComicUtils.CreateComicDataFromFilePath(filePath);
+                }
             }
             var mappedTags = await GetMappedTagNames(comicMetadata.Tags);
             comicMetadata.Tags = [.. mappedTags.resolvedTags];

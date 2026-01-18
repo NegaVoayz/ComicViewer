@@ -43,7 +43,8 @@ namespace ComicViewer.Services
                     string? directory = Path.GetDirectoryName(destinationPath);
                     var allTags = (await service.DataService.GetTagsOfComic(comic.Key))
                         .Select(e => e.Name);
-                    var authors = allTags.Where(e => e.StartsWith(ComicUtils.AuthorPrefix)).Select(e => e.Substring(ComicUtils.AuthorPrefix.Length));
+                    var authors = allTags.Where(e => e.StartsWith(ComicUtils.AuthorPrefix))
+                        .Select(e => e.Substring(ComicUtils.AuthorPrefix.Length));
                     var tags = allTags.Where(e => !e.StartsWith(ComicUtils.AuthorPrefix));
                     string processedName = ComicUtils.GetCombinedName(authors, comic.Title, tags);
                     processedName = $"{processedName}.zip";
@@ -56,10 +57,14 @@ namespace ComicViewer.Services
                         fullPath = processedName;
                     }
                 }
-                await Task.Run(() =>
+                await Task.Run(async () =>
                 {
                     File.Copy(sourceFilePath, fullPath, true);
-                    ComicUtils.AddCommentToZip(fullPath, comic.Source);
+                    var metadata = comicData.ToComicMetadata();
+                    var tags = await service.DataService.GetTagsOfComic(comicData.Key);
+                    metadata.Tags = tags.Select(e => e.Name).ToList();
+                    var metadataJson = JsonSerializer.Serialize(metadata);
+                    ComicUtils.AddCommentToZip(fullPath, metadataJson);
                 });
                 MessageBox.Show("分享包创建成功！");
                 return;
