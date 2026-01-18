@@ -41,7 +41,7 @@ namespace ComicViewer.Services
                     var comment = ComicUtils.GetCommentOfZip(filePath);
                     comicMetadata = JsonSerializer.Deserialize<ComicMetadata>(comment);
                 }
-                if(comicMetadata == null)
+                if (comicMetadata == null)
                 {
                     comicMetadata = ComicUtils.CreateComicDataFromFilePath(filePath);
                 }
@@ -57,7 +57,7 @@ namespace ComicViewer.Services
             if (Path.GetExtension(filePath).Equals(".zip", StringComparison.OrdinalIgnoreCase)
                 && Path.GetPathRoot(filePath) == Path.GetPathRoot(Configs.GetFilePath()))
             {
-                if(!File.Exists(dest))
+                if (!File.Exists(dest))
                     File.Move(filePath, dest);
                 service.FileService.AddComicPath(comic.Key, dest);
                 await service.DataService.AddComicAsync(comic);
@@ -83,7 +83,7 @@ namespace ComicViewer.Services
         public async Task MigrateComicLibrary(string sourcePath, string destinationPath)
         {
             var comics = await service.DataService.GetAllComicsAsync();
-            if(Path.GetPathRoot(sourcePath) == Path.GetPathRoot(destinationPath))
+            if (Path.GetPathRoot(sourcePath) == Path.GetPathRoot(destinationPath))
             {
                 Directory.Move(sourcePath, destinationPath);
                 return;
@@ -112,7 +112,7 @@ namespace ComicViewer.Services
                 if (resolvedTags.Contains(tag))
                     continue;
                 var standardTag = await service.DataService.FindTagNameByAliasAsync(tag);
-                if(standardTag == null)
+                if (standardTag == null)
                     newTags.Add(tag);
                 resolvedTags.Add(standardTag ?? tag);
             }

@@ -3,9 +3,7 @@ using ComicViewer.Infrastructure;
 using ComicViewer.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
-using SharpCompress.Common;
 using System.IO;
-using System.Security.Cryptography;
 
 namespace ComicViewer.Services
 {
@@ -268,7 +266,7 @@ namespace ComicViewer.Services
             await context.SaveChangesAsync();
 
             var ret = context.Tags.AsNoTracking().FirstOrDefault(e => e.Key == tagKey);
-            if(ret == null)
+            if (ret == null)
             {
                 throw new InvalidDataException();
             }
@@ -599,7 +597,7 @@ namespace ComicViewer.Services
                 var dest = ComicUtils.ComicNormalPath(newName);
                 if (File.Exists(dest))
                     File.Delete(dest);
-                using ( var src = service.FileService.GetComicPath(comicKey))
+                using (var src = service.FileService.GetComicPath(comicKey))
                 {
                     if (await service.FileLoader.StopMovingTask(comicKey))
                     {
@@ -632,6 +630,6 @@ namespace ComicViewer.Services
                 await transaction.RollbackAsync();
                 throw;
             }
-}
+        }
     }
 }

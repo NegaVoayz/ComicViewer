@@ -5,7 +5,6 @@ using DynamicData.Binding;
 using System.Collections.ObjectModel;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Windows.Input;
 
 namespace ComicViewer.Services
 {

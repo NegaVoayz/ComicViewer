@@ -320,7 +320,7 @@ namespace ComicViewer
                 // 自动刷新显示
                 var newData = await service.DataService.RenameComic(comic.Key, newTitle);
 
-                if(newData == null)
+                if (newData == null)
                 {
                     ShowStatusMessage($"更新 {comic.Title} 的标题失败：存在重名漫画 {newTitle}", 2000);
                     return;
@@ -559,7 +559,7 @@ namespace ComicViewer
                 ShowStatusMessage(message, 2000);
 
                 // 显示完成提示
-                if(skipCount != 0 || errorCount != 0)
+                if (skipCount != 0 || errorCount != 0)
                 {
                     MessageBox.Show(message, "添加完成",
                         MessageBoxButton.OK, MessageBoxImage.Information);

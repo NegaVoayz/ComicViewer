@@ -30,7 +30,7 @@ namespace ComicViewer.Services
             public bool EndsWith(string value, StringComparison comparisonType) => _path.EndsWith(value, comparisonType);
             public bool StartsWith(string value) => _path.StartsWith(value);
             public bool StartsWith(string value, StringComparison comparisonType) => _path.StartsWith(value, comparisonType);
-            public string Extension => System.IO.Path.GetExtension(_path);
+            public string Extension => Path.GetExtension(_path);
             public override string ToString() => _path;
             public void Dispose()
             {
@@ -64,11 +64,12 @@ namespace ComicViewer.Services
 
         private async Task Initialize()
         {
-            foreach(var comic in await service.DataService.GetAllComicsAsync())
+            foreach (var comic in await service.DataService.GetAllComicsAsync())
             {
                 var path = ComicUtils.ComicNormalPath(comic.Title);
                 if (!File.Exists(path))
                 {
+                    // migration (will be removed in v2.1.0)
                     var oldPath = ComicUtils.ComicNormalPath(comic.Key);
                     if (!File.Exists(oldPath)) continue;
                     File.Move(oldPath, path);
@@ -144,7 +145,7 @@ namespace ComicViewer.Services
             Debug.WriteLine($"{path} used {pathDataDict[path].UseCount} times");
             if (entry.Deprecated && entry.UseCount == 0)
             {
-                pathDataDict.Remove(path,out _);
+                pathDataDict.Remove(path, out _);
                 _ = RemoveFile(path);
             }
         }
@@ -207,7 +208,7 @@ namespace ComicViewer.Services
                 {
                     return LoadImageEntriesFromCmcStreaming(path);
                 }
-                if(Directory.Exists(path))
+                if (Directory.Exists(path))
                 {
                     return LoadImageEntriesFromFolder(path);
                 }
@@ -262,7 +263,7 @@ namespace ComicViewer.Services
                     // 处理.cmc文件（tar包里的漫画包）
                     stream = LoadImageFromCmc(archivePath, entryName);
                 }
-                else if(Directory.Exists(archivePath))
+                else if (Directory.Exists(archivePath))
                 {
                     stream = LoadImageEntriesFromFolder(archivePath, entryName);
                 }

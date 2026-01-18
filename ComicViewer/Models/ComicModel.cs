@@ -4,7 +4,6 @@ using Microsoft.EntityFrameworkCore;
 using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Windows.Media.Imaging;
 
@@ -248,7 +247,7 @@ namespace ComicViewer.Models
         {
             await Task.Run(async () =>
             {
-                if(service.CoverCache.TryGet(Key, out _))
+                if (service.CoverCache.TryGet(Key, out _))
                 {
                     return;
                 }

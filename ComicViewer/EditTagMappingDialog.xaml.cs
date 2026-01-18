@@ -1,15 +1,9 @@
 ﻿using ComicViewer.Infrastructure;
 using ComicViewer.Models;
 using ComicViewer.Services;
-using System.Collections.ObjectModel;
-using System.ComponentModel;
-using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Linq;
-using System.Threading.Tasks;
-using System.Collections.Generic;
 
 namespace ComicViewer
 {
@@ -52,7 +46,7 @@ namespace ComicViewer
             var alias = NewAliasTextBox.Text.Trim();
             var tagName = NewTagNameTextBox.Text.Trim();
             AddMappingButton.IsEnabled =
-                !(  string.IsNullOrWhiteSpace(alias) 
+                !(string.IsNullOrWhiteSpace(alias)
                  || string.IsNullOrWhiteSpace(tagName)
                  || _cache.AllEntries.Any(e => e.Alias == alias));
         }
@@ -121,8 +115,8 @@ namespace ComicViewer
                 _addedMappings.Add(mapping);
             }
 
-                // 清空输入框
-                NewAliasTextBox.Text = string.Empty;
+            // 清空输入框
+            NewAliasTextBox.Text = string.Empty;
             NewTagNameTextBox.Text = string.Empty;
 
             // 焦点回到第一个输入框
@@ -162,7 +156,7 @@ namespace ComicViewer
             {
                 // 保存所有映射到数据库
                 Changed = await service.DataService.ChangeTagAliasesAsync(_addedMappings, _removedMappings);
-                if(Changed)
+                if (Changed)
                 {
                     // if the alias changes affected other aliases, refresh all
                     await service.TagAliasCache.RefreshAsync();

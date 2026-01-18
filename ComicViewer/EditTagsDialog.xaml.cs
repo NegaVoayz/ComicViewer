@@ -130,7 +130,7 @@ namespace ComicViewer
                     newAliases.Add(resolvedTagName);
                 }
 
-                if(isAuthorTag)
+                if (isAuthorTag)
                 {
                     MessageBox.Show($"标签 \"{name}\" 包含作者前缀 \"{ComicUtils.AuthorPrefix}\"，无法作为普通标签添加。将会被跳过", "错误",
                         MessageBoxButton.OK, MessageBoxImage.Error);
@@ -155,7 +155,7 @@ namespace ComicViewer
                         Count = 1
                     };
                     _cache.AddTag(tag);
-                } 
+                }
                 else
                 {
                     _cache.SelectTag(ComicUtils.CalculateMD5(existingName));

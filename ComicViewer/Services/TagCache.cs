@@ -92,7 +92,7 @@ namespace ComicViewer.Services
             TagData tag = _tagsSource.Items.First(e => e.Key == tagKey);
             tag.Count--;
             _selectedTagsSet.Remove(_selectedTagsSet.Items.First(t => t.Key == tagKey));
-            if(tag.Count == 0)
+            if (tag.Count == 0)
             {
                 _tagsSource.Remove(tag);
             }
@@ -127,7 +127,7 @@ namespace ComicViewer.Services
 
         #region 辅助属性
 
-        public IEnumerable<TagData> SelectedTags => _selectedTagsSet.Items; 
+        public IEnumerable<TagData> SelectedTags => _selectedTagsSet.Items;
 
         // 用于 UI 绑定的命令属性
         public ICommand SelectTagCommand { get; }

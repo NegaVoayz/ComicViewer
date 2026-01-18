@@ -113,7 +113,7 @@ namespace ComicViewer.Services
                         await service.DataService.AddMovingTask(model);
                     }
                     //Thread.Sleep(120 * 1000);
-                    if(!File.Exists(model.DestinationPath))
+                    if (!File.Exists(model.DestinationPath))
                         await MoveComicAsync(model, cts.Token);
                     // 任务成功完成
                 }
@@ -139,7 +139,7 @@ namespace ComicViewer.Services
             {
                 if (!File.Exists(model.SourcePath))
                 {
-                    if(!Directory.Exists(model.SourcePath))
+                    if (!Directory.Exists(model.SourcePath))
                         throw new FileNotFoundException("源文件不存在", model.SourcePath);
                     cancellation.ThrowIfCancellationRequested();
                     await LoadFolderAsync(model);
