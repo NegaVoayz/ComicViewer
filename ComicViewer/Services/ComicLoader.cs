@@ -38,8 +38,15 @@ namespace ComicViewer.Services
             {
                 if (Path.GetExtension(filePath) == ".zip")
                 {
-                    var comment = ComicUtils.GetCommentOfZip(filePath);
-                    comicMetadata = JsonSerializer.Deserialize<ComicMetadata>(comment);
+                    try
+                    {
+                        var comment = ComicUtils.GetCommentOfZip(filePath);
+                        comicMetadata = JsonSerializer.Deserialize<ComicMetadata>(comment);
+                    }
+                    catch
+                    {
+                        // Ignore errors in reading zip comment
+                    }
                 }
                 if (comicMetadata == null)
                 {
