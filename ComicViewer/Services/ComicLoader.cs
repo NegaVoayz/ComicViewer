@@ -45,13 +45,13 @@ namespace ComicViewer.Services
 
             if (service.DataService.FindComic(comic.Key)) return null;
 
+            var dest = ComicUtils.ComicNormalPath(comic.Title);
             if (Path.GetExtension(filePath).Equals(".zip", StringComparison.OrdinalIgnoreCase)
                 && Path.GetPathRoot(filePath) == Path.GetPathRoot(Configs.GetFilePath()))
             {
-                var dest = ComicUtils.ComicNormalPath(comic.Key);
                 if(!File.Exists(dest))
                     File.Move(filePath, dest);
-                service.FileService.AddComicPath(comic.Key, ComicUtils.ComicNormalPath(comic.Key));
+                service.FileService.AddComicPath(comic.Key, dest);
                 await service.DataService.AddComicAsync(comic);
             }
             else
@@ -62,7 +62,7 @@ namespace ComicViewer.Services
                 {
                     Key = comic.Key,
                     SourcePath = filePath,
-                    DestinationPath = ComicUtils.ComicNormalPath(comic.Key)
+                    DestinationPath = dest
                 });
             }
 

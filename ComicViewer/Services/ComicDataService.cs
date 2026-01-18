@@ -596,7 +596,7 @@ namespace ComicViewer.Services
                 await context.ComicTags.Where(e => e.ComicKey == comic.Key)
                     .ExecuteUpdateAsync(setter => setter.SetProperty(e => e.ComicKey, newKey));
 
-                var dest = ComicUtils.ComicNormalPath(newKey);
+                var dest = ComicUtils.ComicNormalPath(newName);
                 if (File.Exists(dest))
                     File.Delete(dest);
                 using ( var src = service.FileService.GetComicPath(comicKey))

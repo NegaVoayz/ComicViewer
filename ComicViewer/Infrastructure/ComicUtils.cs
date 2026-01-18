@@ -193,9 +193,9 @@ namespace ComicViewer.Services
                 }
             };
         }
-        public static string ComicNormalPath(string Key)
+        public static string ComicNormalPath(string Title)
         {
-            return Path.Combine(Configs.GetFilePath(), $"{Key}.zip");
+            return Path.Combine(Configs.GetFilePath(), $"{Title}.zip");
         }
         public static string CalculateMD5(string input)
         {

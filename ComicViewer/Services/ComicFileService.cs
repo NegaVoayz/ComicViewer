@@ -66,8 +66,13 @@ namespace ComicViewer.Services
         {
             foreach(var comic in await service.DataService.GetAllComicsAsync())
             {
-                var path = ComicUtils.ComicNormalPath(comic.Key);
-                if (!File.Exists(path)) continue;
+                var path = ComicUtils.ComicNormalPath(comic.Title);
+                if (!File.Exists(path))
+                {
+                    var oldPath = ComicUtils.ComicNormalPath(comic.Key);
+                    if (!File.Exists(oldPath)) continue;
+                    File.Move(oldPath, path);
+                }
                 comicPathDict[comic.Key] = path;
                 pathDataDict[path] = new EntryData { UseCount = 0, Deprecated = false };
             }
