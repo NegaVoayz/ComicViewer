@@ -559,8 +559,11 @@ namespace ComicViewer
                 ShowStatusMessage(message, 2000);
 
                 // 显示完成提示
-                MessageBox.Show(message, "添加完成",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                if(skipCount != 0 || errorCount != 0)
+                {
+                    MessageBox.Show(message, "添加完成",
+                        MessageBoxButton.OK, MessageBoxImage.Information);
+                }
             }
             finally
             {
